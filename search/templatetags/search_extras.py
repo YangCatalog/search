@@ -1,5 +1,6 @@
 from django import template
 from django.utils.html import escape
+from django.conf import settings
 import logging
 import json
 import re
@@ -144,7 +145,8 @@ def print_cells(module_details):
             help_text = '{}_ht'.format(key)
             html += '<tr>' + '\n'
             html += '<td style="text-align: right"><b>{} : </b>'.format(key)
-            html += '<img src="/yang/static/img/help.png" border="0" data-html="true" data-toggle="tooltip" title="{}"/></td>' \
+#            html += '<img src="/yang/static/img/help.png" border="0" data-html="true" data-toggle="tooltip" title="{}"/></td>' \
+            html += '<img src="' + settings.STATIC_URL + '/img/help.png" border="0" data-html="true" data-toggle="tooltip" title="{}"/></td>' \
                 .format(module_details[help_text])
             inner_html = print_cell(module_details[key], key)
             html += inner_html
