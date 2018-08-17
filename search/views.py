@@ -150,7 +150,7 @@ def index(request):
     return render(request, 'search/index.html', context)
 
 
-def show_node(request, name, path, revision=''):
+def show_node(request, name='', path='', revision=''):
     """
     View for show_node page, which provides context for show_node.html
     Shows description for yang modules.
@@ -163,14 +163,19 @@ def show_node(request, name, path, revision=''):
     """
     alerts = []
     context = dict()
-    if not revision:
-        revision = get_latest_mod(name, alerts)
-        revision = revision.split('@')[1]
-    node = yindex.objects.filter(module=name, path=path, revision=revision)[:1]
-    result = node.values().get()
-    context['show_node'] = result
-    context['properties'] = json.loads(result['properties'])
-
+    try:
+        if not revision:
+            revision = get_latest_mod(name, alerts)
+            revision = revision.split('@')[1]
+        node = yindex.objects.filter(module=name, path=path, revision=revision)[:1]
+        if node is None:
+            alerts.append('Could not find data for {} at {}'.format(name, path))
+        result = node.values().get()
+        context['show_node'] = result
+        context['properties'] = json.loads(result['properties'])
+    except:
+        alerts.append('Module and path must be specified')
+    context['alerts'] = alerts 
     return render(request, 'search/show_node.html', context)
 
 
@@ -411,7 +416,7 @@ def metadata_update(request):
     os.unlink(LOCKF)
 
 
-def yang_tree(request, module):
+def yang_tree(request, module = ''):
     """
     View for yang_tree.html webpage. Generates yang tree view of the module.
     :param request: Array with arguments from rest request.
@@ -421,9 +426,11 @@ def yang_tree(request, module):
     context = dict()
     alerts = []
     jstree_json = None
+    json_tree = dict()
     modn = ''
     title = ''
-    if not module:
+    maturity = ''
+    if module == '':
         alerts.append('Module was not specified')
     else:
         nmodule = os.path.basename(module)
@@ -466,17 +473,19 @@ def yang_tree(request, module):
                             augments['children'] = json_tree['augments']
                             jstree_json['data'].append(build_tree(augments, modn))
                 except Exception as e:
-                    raise Exception("Failed to read YANG tree data for {}, {}".format(module, e))
+                    alerts.append("Failed to read YANG tree data for {}, {}".format(module, e))
             else:
                 alerts.append("YANG Tree data does not exist for {}".format(module))
-    context['jstree_json'] = json.dumps(jstree_json, cls=DjangoJSONEncoder)
+    if jstree_json is not None:
+        context['jstree_json'] = json.dumps(jstree_json, cls=DjangoJSONEncoder)
     context['module'] = module
     if modn:
         context['modn'] = modn
     else:
         context['modn'] = module
     context['alerts'] = alerts
-    context['json_tree'] = json_tree
+    if json_tree:
+        context['json_tree'] = json_tree
     context['title'] = title
     context['maturity'] = maturity
     return render(request, 'search/yang_tree.html', context)
