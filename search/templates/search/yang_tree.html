@@ -1,0 +1,96 @@
+{% load staticfiles %}
+
+<!DOCTYPE html>
+<html lang="en">
+<meta charset="UTF-8">
+<head>
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{% static "css/bootstrap.min.css" %}" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static "css/bootstrap-theme.min.css" %}" crossorigin="anonymous">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/jstree/3.3.2/themes/default/style.min.css"
+          integrity="sha256-riSdF36gKV63v22ujIMlNzON5f7AS9MNzwFn0ZgGt0Q=" crossorigin="anonymous"/>
+    <style>.abbrCls {
+        border-bottom: 1px dotted;
+    }
+
+    a.nodeClass i {
+        color: #228b22;
+    }</style>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+    <script src="{% static "js/bootstrap.min.js" %}" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js" integrity="sha256-KM512VNnjElC30ehFwehXjx1YCHPiQkOPmqnrWtpccM=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jstree/3.3.2/jstree.min.js" integrity="sha256-/N7f/1nHQUQkXl4HET7s457ciiCHHjVaa4vWHa7JMWI=" crossorigin="anonymous"></script>
+    <script src="{% static "js/jstreegrid.js" %}"></script>
+</head>
+<body>
+<div class="container" role="main">
+    <div style="margin-top:20px;" id="alert_container">
+
+
+        {% for alert in alerts %}
+            <div class="row">
+                <div class="col-sm-8">
+                    <div class="alert alert-danger alert-dismissible" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span></button>
+                        <strong>ERROR!</strong> {{ alert }}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+
+    </div>
+    <div class="page-header">
+        <h3>{{ title }}'</h3>
+    </div>
+    {#    <?php#}
+    {#if ($jstree_json !== null) {#}
+    {#    ?>#}
+    {% if jstree_json %}
+        <div style="margin-bottom: 10px;">
+            <b>Module: <span style="color: {{ maturity.color }};">{{ module }}</span>, Namespace:
+                <span style="color: {{ maturity.color }};">{{ json_tree.namespace }}</span>, Prefix:
+                <span style="color: {{ maturity.color }};">{{ json_tree.prefix }}</span><br/>
+                <a href="{% url "search:impact_analysis" %}">Impact Analysis</a> for {{ module }}</b>
+            {#?modules[]=<?=$module?>"#}
+        </div>
+        <div id="yangtree"></div>
+        <script>
+            $(document).ready(function () {
+                $('#yangtree').jstree({
+                    plugins: ['themes', 'json', 'grid'],
+                    grid: {
+                        resizable: true,
+                        draggable: true,
+                        columns: [
+                            {
+                                width: '100%',
+                                header: '<b>Element</b> &nbsp;&nbsp;<a href="#" onClick="expandTree();">[+] Expand All</a> <a href="#" onClick="collapseAll();">[-] Collapse All</a>'
+                            },
+                            {header: '<b>Schema</b>', value: 'schema'},
+                            {header: '<b>Type</b>', value: 'type', title: 'type_title', valueClass: 'type_class'},
+                            {header: '<b>Flags</b>', value: 'flags'},
+                            {header: '<b>Opts</b>', value: 'opts'},
+                            {header: '<b>Status</b>', value: 'status'},
+                            {header: '<b>Path</b>', value: 'path'},
+                        ]
+                    },
+                    core: {{ jstree_json|safe }}}).on("activate_node.jstree", function (e, data) {
+                    window.location.href = data.node.a_attr.href;
+                    
+                });
+            });
+
+            function expandTree() {
+                $('#yangtree').jstree('open_all');
+            }
+
+            function collapseAll() {
+                $('#yangtree').jstree('close_all');
+            }
+        </script>
+    {% endif %}
+</div>
+</body>
+</html>
