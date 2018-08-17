@@ -26,3 +26,4 @@ db.sqlite3
 migrations/
 admin/
 manage.py
+config.ini
