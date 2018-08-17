@@ -3,15 +3,36 @@ Yang-search
 
 ## Django version basics
 
- * Python version currently is 3.5.5
- * Mysql version is 5.7.22
+**PROJECT STRUCTURE:**
 
-requirements.txt contains python libraries
+├── LICENSE  
+├── README.md  
+├── search | django application dir   
+│   ├── apps.py    
+│   ├── models.py | defines database structure  
+│   ├── templates  
+│   │   └── search | all the html templates   
+│   ├── templatetags  
+│   │   └── search_extras.py | support functions for templates  
+│   ├── tests.py  
+│   ├── urls.py | Defines usable urls in search app  
+│   └── views.py | Provides backend for html templates  
+├── static | static files for the website  
+├── staticfiles | static root for django  
+└── yang | main django project settings  
+    ├── settings.py | default django settings  
+    ├── urls.py  
+    └── wsgi.py  
 
-uwsgi is running with command 
- *     uwsgi --chdir=$PATH_TO_DIR --module=yang.wsgi:application --env DJANGO_SETTINGS_MODULE=yang.settings --socket :$SOCKET --home=$PATH_TO_VENV --logto=$PATH_TO_LOG
+**URL SCHEME**
 
-DATABASE structure is:
+/   
+/show_node/        
+/yang_tree/
+/impact_analysis/
+/module_details/
+
+**DATABASE STRUCTURE:**
 
  * **table yindex**
  * module = CharField(max_length=255, blank=True, null=True)
@@ -48,3 +69,10 @@ viable for production.
 `sed -i '1s/^/SET autocommit=0;\n/' /$PATH/foo.dump`  
 `mysql -u $DBUSER -p$DBPASSWORD $DBNAME < /$PATH/foo.dump`  
 
+ * Python version currently is 3.5.5
+ * Mysql version is 5.7.22
+
+requirements.txt contains python libraries
+
+uwsgi is running with command 
+ *     uwsgi --chdir=$PATH_TO_DIR --module=yang.wsgi:application --env DJANGO_SETTINGS_MODULE=yang.settings --socket :$SOCKET --home=$PATH_TO_VENV --logto=$PATH_TO_LOG

@@ -23,3 +23,6 @@ __pycache__/
 *.pyc
 
 db.sqlite3
+migrations/
+admin/
+manage.py
