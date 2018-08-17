@@ -1,7 +1,4 @@
 from django.urls import path
-from django.urls import re_path
-from django.conf.urls import url
-from django.views.decorators.csrf import csrf_protect
 from django.views.decorators.csrf import csrf_exempt
 
 from . import views
@@ -11,6 +8,7 @@ app_name = 'search'
 urlpatterns = [
     path('', views.index, name='index'),
     path(r'show_node/<name><path:path>/<revision>', view= views.show_node, name='show_node'),
+    path(r'show_node/', view= views.show_node, name='show_node'),
     path(r'yang_tree/show_node/<name><path:path>', view= views.show_node, name='show_node'),
     path(r'impact_analysis/completions/<type>/<pattern>', view= views.completions, name='completions'),
     path(r'module_details/completions/<type>/<pattern>', view= views.completions, name='completions'),
