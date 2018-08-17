@@ -1,0 +1,25 @@
+# Ignore Vim temporary files
+.*.sw?
+
+# Ignore config file
+config.ini
+
+# Maven
+target/
+
+# Vagrant
+.vagrant
+
+# IntelliJ
+.idea/
+*.iml
+
+# Eclipse
+.project
+
+# Python
+.tox/
+__pycache__/
+*.pyc
+
+db.sqlite3

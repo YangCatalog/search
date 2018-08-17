@@ -1,0 +1,252 @@
+{% load staticfiles %}
+{% load search_extras %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>{# TODO:ADD ARGUMENTS #}
+    <link rel="stylesheet" href="{% static "css/bootstrap.min.css" %}" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static "css/bootstrap-theme.min.css" %}" crossorigin="anonymous">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/datatables/1.10.12/css/dataTables.bootstrap.min.css" integrity="sha256-7MXHrlaY+rYR1p4jeLI23tgiUamQVym2FWmiUjksFDc=" crossorigin="anonymous"/>
+    <style>
+
+        /* Style taken from https://bootstrap-tagsinput.github.io/bootstrap-tagsinput/examples/assets/app.css */
+        .twitter-typeahead .tt-query,
+        .twitter-typeahead .tt-hint {
+            margin-bottom: 0;
+        }
+
+        .twitter-typeahead .tt-hint {
+            display: none;
+        }
+
+        .tt-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            display: none;
+            float: left;
+            min-width: 160px;
+            padding: 5px 0;
+            margin: 2px 0 0;
+            list-style: none;
+            font-size: 14px;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+            -webkit-box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+            background-clip: padding-box;
+            cursor: pointer;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .tt-suggestion {
+            display: block;
+            padding: 3px 20px;
+            clear: both;
+            font-weight: normal;
+            line-height: 1.428571429;
+            color: #333333;
+            white-space: nowrap;
+        }
+
+        .tt-suggestion:hover,
+        .tt-suggestion:focus {
+            color: #ffffff;
+            text-decoration: none;
+            outline: 0;
+            background-color: #428bca;
+        }
+
+        table.controls {
+            border-collapse: separate;
+            border-spacing: 5px;
+        }
+
+        .tooltip-inner {
+            text-align: left;
+        }
+    </style>
+
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+    <script src="{% static "js/bootstrap.min.js" %}" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/datatables/1.10.12/js/jquery.dataTables.min.js" integrity="sha256-TX6POJQ2u5/aJmHTJ/XUL5vWCbuOw0AQdgUEzk4vYMc=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/datatables/1.10.12/js/dataTables.bootstrap.min.js" integrity="sha256-90YqnHom4j8OhcEQgyUI2IhmGYTBO54Adcf3YDZU9xM=" crossorigin="anonymous"></script>
+    <script src="{% static "js/typeahead.bundle.js" %}" type="text/javascript"></script>
+    <script>
+
+        var dt;
+
+        function reloadPage() {
+            var url = "/yang/module_details/";
+            var uargs = [];
+            uargs.push($('#module').val());
+
+            url += uargs.join("&");
+
+            window.location.href = url;
+        }
+
+        $(document).ready(function () {
+            $('#details_commit').on('click', function (e) {
+                reloadPage();
+            });
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+
+        $(document).on('click', '.panel-heading span.clickable', function (e) {
+            if (!$(this).hasClass('panel-collapsed')) {
+                $(this).parents('.panel').find('.panel-body').slideUp();
+                $(this).addClass('panel-collapsed');
+                $(this).find('i').removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
+            } else {
+                $(this).parents('.panel').find('.panel-body').slideDown();
+                $(this).removeClass('panel-collapsed');
+                $(this).find('i').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
+            }
+        });
+    </script>
+
+{% if not modules %}
+    {# TODO: ADD 'Modules were not specified' into alerts #}
+{% endif %}
+{##}
+{#    $module = str_replace('.yang', '', $module);#}
+{#    $module = str_replace('.yin', '', $module);#}
+{#    $properties = null;#}
+{##}
+{#    $ycro = get_rev_org('yang-catalog', $dbh, $alerts);#}
+{#    $mod_obj = null;#}
+{##}
+{#    try {#}
+{#        $mod_obj = get_rev_org_obj($module, $rester, $dbh, $alerts);#}
+{#        $module = explode('@', $module)[0];#}
+{#        $properties = $mod_obj->toArray();#}
+{#    } catch (Exception $e) {#}
+{#    push_exception("Failed to get module details for {$module}", $e, $alerts);#}
+{#    }#}
+{##}
+{#    $title = "Module Details for {$module}";#}
+{#    if ($mod_obj !== null) {#}
+{#    $title = "Module Details for {$module}@{$mod_obj->getRevision()}/{$mod_obj->getOrganization()}";#}
+{#    }#}
+{#    }#}
+{##}
+{#    ?>#}
+
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+    </head>
+<body>
+<div class="container" role="main">
+    <div style="margin-top:20px;" id="alert_container">
+
+{% if not module %}
+        <div class="row">
+            <div class="col-sm-8">
+                <div class="alert alert-info alert-dismissible" role="alert">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span></button>
+                    Please specify a module to get its details.
+                </div>
+            </div>
+        </div>
+        <?php
+
+{% endif %}
+
+{% for alert in alerts %}
+        <div class="row">
+            <div class="col-sm-8">
+                <div class="alert alert-danger alert-dismissible" role="alert">
+                    <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                        <span aria-hidden="true">&times;</span></button>
+                    <strong>ERROR!</strong> {{ alert }}
+                </div>
+            </div>
+        </div>
+        {% endfor %}
+
+    </div>
+    <div class="page-header">
+        <h3>{{ title }}</h3>
+    </div>
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <label class="panel-title">Specify Module</label>
+            <span class="pull-right clickable" style="cursor: pointer;"><i class="glyphicon glyphicon-chevron-down"></i></span>
+        </div>
+        <div class="panel-body">
+            <div>
+                <div>
+                    <div>
+                        <form>
+                            <table border="0" class="controls">
+                                <tbody>
+                                <tr>
+                                    <td><b>Module:</b></td>
+                                    <td>
+                                        <input type="text" value="{{ module }}" id="module" class="form-control" placeholder="Module Name" name="module">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <button type="submit" class="btn btn-primary" id="details_commit">Get Details
+                                        </button>
+                                    </td>
+                                </tr>
+{% if module %}
+                                <tr>
+                                    <td style="text-align: right; padding-top: 10px;">
+                                        <a href="{% url "search:yang_tree" module=module %}"><img border="0" src="{% static "img/leaf.png" %}" title="Tree View for {{ module }}">
+                                            Tree View</a>
+                                        |
+                                        <a href="{% url "search:impact_analysis" module=module %}"><img border="0" src="{% static "img/impact.png" %}" title="Impact Analysis for {{ module }}">
+                                            Impact Analysis</a>
+                                        |
+                                        <a href="{% url "search:yangsuite" module=module %}"><img src="{% static "img/yang_suite.png" %}" border="0" title="Yang Suite for {{ module }}">Yang
+                                            Suite</a>
+                                    </td>
+                                </tr>
+{% endif %}
+                                </tbody>
+                            </table>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+        $('#module').typeahead(null, {
+            name: 'mod_completions',
+            limit: 100,
+            source: function (query, syncResults, asyncResults) {
+                $.get('completions/module/' + query, function (data) {
+                    asyncResults(data);
+                });
+            }
+        });
+    </script>
+</div>
+{#<?php#}
+{#  if ($properties !== null) {#}
+{#      ?>#}
+{% if module_details %}
+    <table id="datatable" class="table table-responsive" width="100%" cellspacing="0">
+        <thead>
+        <tr>
+            <th style="text-align: right">Property Name</th>
+            <th>Property Value</th>
+        </tr>
+        </thead>
+        <tbody>
+            {{ module_details|print_cells|safe }}
+        </tbody>
+    </table>
+{% endif %}
+</body>
+</html>

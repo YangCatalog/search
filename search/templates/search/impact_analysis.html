@@ -1,0 +1,494 @@
+{% load staticfiles %}
+{% load search_extras %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>{{ title }}</title>
+    <link rel="stylesheet" href="{% static "css/bootstrap.min.css" %}" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static "css/bootstrap-theme.min.css" %}" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static "css/bootstrap-tagsinput.css" %}">
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/qtip2/2.2.1/jquery.qtip.min.css" integrity="sha256-ETJXPMaFFQmwk7vArlWKUK3Pr/s84J3zfiXC83Pi2xg=" crossorigin="anonymous"/>
+    <link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.0.13/css/all.css" integrity="sha384-DNOHZ68U8hZfKXOrtjWvjxusGo9WQnrNx2sqG0tfsghAvtVlRW3tvkXWZh58N9jp" crossorigin="anonymous">
+    <style>
+
+        /* Style taken from https://bootstrap-tagsinput.github.io/bootstrap-tagsinput/examples/assets/app.css */
+
+        .twitter-typeahead .tt-query, .twitter-typeahead .tt-hint {
+            margin-bottom: 0;
+        }
+
+        .twitter-typeahead .tt-hint {
+            display: none;
+        }
+
+        .tt-menu {
+            position: absolute;
+            top: 100%;
+            left: 0;
+            z-index: 1000;
+            display: none;
+            float: left;
+            min-width: 160px;
+            padding: 5px 0;
+            margin: 2px 0 0;
+            list-style: none;
+            font-size: 14px;
+            background-color: #ffffff;
+            border: 1px solid #cccccc;
+            border: 1px solid rgba(0, 0, 0, 0.15);
+            border-radius: 4px;
+            -webkit-box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+            box-shadow: 0 6px 12px rgba(0, 0, 0, 0.175);
+            background-clip: padding-box;
+            cursor: pointer;
+            max-height: 150px;
+            overflow-y: auto;
+        }
+
+        .tt-suggestion {
+            display: block;
+            padding: 3px 20px;
+            clear: both;
+            font-weight: normal;
+            line-height: 1.428571429;
+            color: #333333;
+            white-space: nowrap;
+        }
+
+        .tt-suggestion:hover, .tt-suggestion:focus {
+            color: #ffffff;
+            text-decoration: none;
+            outline: 0;
+            background-color: #428bca;
+        }
+
+        table.controls {
+            border-collapse: separate;
+            border-spacing: 5px;
+        }
+
+        .tooltip-inner {
+            text-align: left;
+        }
+
+        ul.color-list {
+            list-style: none;
+            padding-left: 0;
+            column-count: {{ num_legend_cols }};
+            -moz-column-count: {{ num_legend_cols }};
+            -webkit-column-count: {{ num_legend_cols }};
+        }
+
+        ul.rim-list {
+            list-style: none;
+            padding-left: 0;
+            column-count: {{ rim_cols }};
+            -moz-column-count: {{ rim_cols }};
+            -webkit-column-count: {{ rim_cols }};
+            column-gap: 1px;
+            -moz-column-gap: 1px;
+            -webkit-column-gap: 1px;
+        }
+    </style>
+
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+    <script src="{% static "js/bootstrap.min.js" %}" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="{% static "js/bootstrap-tagsinput.js" %}"></script>
+    <script src="//cdnjs.cloudflare.com/ajax/libs/qtip2/2.2.1/jquery.qtip.min.js" integrity="sha256-Mir9XErZ/xEi1+rIQUpp7nFnZLsJfUS325iUvHDUpyY=" crossorigin="anonymous"></script>
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/cytoscape/2.7.10/cytoscape.min.js" integrity="sha256-Nb/w8L97ZY7g1BTV4SkV2w+mB5+mtSb6fv2UsSry3UE=" crossorigin="anonymous"></script>
+    <script src="{% static "js/cytoscape-spread.js" %}"></script>
+    <script src="{% static "js/cytoscape-qtip.js" %}" type="text/javascript"></script>
+    <script src="{% static "js/typeahead.bundle.js" %}" type="text/javascript"></script>
+    <script>
+
+        var opacity_full = 1.0;
+        var opacity_faded = 0.25;
+
+        $(function () {
+            $("#cy").cytoscape({
+                layout: {
+                    name: 'spread',
+                    minDist: 40
+                },
+                style: cytoscape.stylesheet()
+                    .selector('node')
+                    .css({
+                        'content': 'data(name)',
+                        'text-valign': 'center',
+                        'color': '#fff',
+                        'text-outline-width': 2,
+                        'background-color': 'data(objColor)',
+                        'text-outline-color': 'data(objColor)'
+                    })
+                    .selector(':selected')
+                    .css({
+                        'border-width': 3,
+                        'border-color': '#2c1ec1'
+                    })
+                    .selector('edge')
+                    .css({
+                        'curve-style': 'bezier',
+                        'target-arrow-shape': 'triangle',
+                        'source-arrow-shape': 'circle',
+                        'line-color': 'data(objColor)',
+                        'opacity': 0.666,
+                        'source-arrow-color': 'data(objColor)',
+                        'target-arrow-color': 'data(objColor)'
+                    })
+                    .selector('.faded')
+                    .css({
+                        'opacity': opacity_faded,
+                        'text-opacity': 0
+                    }),
+                elements: {
+                    nodes: {{ nodes_json|safe }},
+                    edges: {{ edges_json|safe }}
+                },
+                ready: function () {
+                    window.cy = this;
+                    {% for mat, mlist in found_mats.items %}
+                        this.elements('{{ mlist|array_map }}').css({
+                            'border-width': 5,
+                            'border-color': '{{ MATURITY_MAP|get_item:mat }}'
+                        });
+                    {% endfor %}
+
+                    if ({{ found_bottleneck|lower }}) {
+                        this.elements('{{ bottlenecks|implode }}').css({
+                            'border-width': 5,
+                            'border-color': '#333'
+                        });
+                        this.elements('{{ bottlenecks|implode }}').data('bottleneck', true);
+                    }
+                    {% for node in nodes %}
+                        {% if node.data.sub_mod == True %}
+                            this.elements('node[name = "{{ node.data.name }}"]').data('name', 'sub-module: ' + this.elements('node[name = "{{ node.data.name }}"]').data('name')).css({
+                                'font-size': '8px'
+                            });
+                        {% endif %}
+                    {% endfor %}
+                    window.cy.nodes().qtip({
+                        content: function () {
+                            return 'Document ' + this.data('document')
+                        },
+                        position: {
+                            my: 'bottom right',
+                            at: 'top left'
+                        },
+                        show: {
+                            event: 'mouseover'
+                        },
+                        hide: {
+                            event: false,
+                            inactive: 2000
+                        },
+                        style: {
+                            classes: 'qtip-bootstrap',
+                            tip: {
+                                width: 16,
+                                height: 8
+                            }
+                        }
+                    });
+                }
+            });
+        });
+
+        function reloadPage() {
+            var url = "/yang/impact_analysis/";
+            var uargs = [];
+            $.each($('#modtags').val().split(","), function (k, v) {
+                if (v !== '') {
+                    uargs.push("modules[]=" + v);
+                }
+            });
+            $.each($('#orgtags').val().split(","), function (k, v) {
+                if (v !== '') {
+                    uargs.push("orgs[]=" + v);
+                }
+            });
+            var recursion = $('#recursion').val();
+            if (recursion === '') {
+                recusrion = 0;
+            }
+            uargs.push("recurse=" + recursion);
+            if ($('#show_rfcs').is(':checked')) {
+                uargs.push("rfcs=1");
+            } else {
+                uargs.push("rfcs=0");
+            }
+            if ($('#show_subm').is(':checked')) {
+                uargs.push("show_subm=1");
+            } else {
+                uargs.push("show_subm=0");
+            }
+            uargs.push("show_dir=" + $('#show_dir').val());
+
+            url += uargs.join("&");
+
+            window.location.href = url;
+        }
+
+        var highlighted = {};
+        var allHighlighted = true;
+
+        function highlight(what, match) {
+            var wcy = window.cy;
+            var owhat = what;
+            if (what === 'maturity') {
+                what = 'mat';
+            }
+            if (match === '__ALL__') {
+                wcy.elements('node').css({
+                    'opacity': opacity_full
+                });
+                wcy.elements('edge').css({
+                    'opacity': opacity_full
+                });
+                allHighlighted = true;
+                highlighted = {};
+            } else {
+                var eop = '=';
+                var seop = '';
+                if (allHighlighted === true) {
+                    eop = '!=';
+                    seop = '!';
+                }
+                var nexpr = what + ' ' + eop + ' "' + match + '"';
+                var eexpr = nexpr;
+                if (what === 'bottleneck') {
+                    nexpr = seop + 'bottleneck';
+                    eexpr = '';
+                }
+                var key = what + ':' + match;
+                if (allHighlighted === true) {
+                    if (nexpr !== '') {
+                        wcy.elements('node[' + nexpr + ']').css({
+                            'opacity': opacity_faded
+                        });
+                    }
+                    if (eexpr !== '') {
+                        wcy.elements('edge[' + eexpr + ']').css({
+                            'opacity': opacity_faded
+                        });
+                    }
+                    allHighlighted = false;
+                    return highlight(owhat, match);
+                }
+
+                if (!(key in highlighted) || highlighted[key] === false) {
+                    if (nexpr !== '') {
+                        wcy.elements('node[' + nexpr + ']').css({
+                            'opacity': opacity_full
+                        });
+                    }
+                    if (eexpr !== '') {
+                        wcy.elements('edge[' + eexpr + ']').css({
+                            'opacity': opacity_full
+                        });
+                    }
+                    highlighted[key] = true;
+                } else if (highlighted[key] === true) {
+                    if (nexpr !== '') {
+                        wcy.elements('node[' + nexpr + ']').css({
+                            'opacity': opacity_faded
+                        });
+                    }
+                    if (eexpr !== '') {
+                        wcy.elements('edge[' + eexpr + ']').css({
+                            'opacity': opacity_faded
+                        });
+                    }
+                    highlighted[key] = false;
+                }
+            }
+            return false;
+        }
+
+        $(document).ready(function () {
+            $('#graph_commit').on('click', function (e) {
+                reloadPage();
+            });
+            $('#graph_export').on('click', function (e) {
+                var png = window.cy.png({
+                    full: true
+                });
+                var img = new Image();
+                img.src = png;
+
+                var win = window.open("");
+                win.document.write(img.outerHTML);
+            });
+
+            $('[data-toggle="tooltip"]').tooltip();
+        });
+
+        $(document).on('click', '.panel-heading span.clickable', function (e) {
+            if (!$(this).hasClass('panel-collapsed')) {
+                $(this).parents('.panel').find('.panel-body').slideUp();
+                $(this).addClass('panel-collapsed');
+                $(this).find('i').removeClass('glyphicon-chevron-up').addClass('glyphicon-chevron-down');
+                window.cy.resize();
+            } else {
+                $(this).parents('.panel').find('.panel-body').slideDown();
+                $(this).removeClass('panel-collapsed');
+                $(this).find('i').removeClass('glyphicon-chevron-down').addClass('glyphicon-chevron-up');
+                window.cy.resize();
+            }
+        });
+    </script>
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+</head>
+<body>
+<div class="container" role="main">
+    <div style="margin-top:20px;" id="alert_container">
+
+        {% if not modules %}
+            <div class="row">
+                <div class="col-sm-8">
+                    <div class="alert alert-info alert-dismissible" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span></button>
+                        Please specify at least one module to generate the impact analysis.
+                    </div>
+                </div>
+            </div>
+
+        {% endif %}
+        {% for alert in alerts %}
+            <div class="row">
+                <div class="col-sm-8">
+                    <div class="alert alert-danger alert-dismissible" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span></button>
+                        <strong>ERROR!</strong> {{ alert }}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+
+    </div>
+    <div class="page-header">
+        <h3>{{ title }}</h3>
+    </div>
+    <div class="panel panel-default">
+        <div class="panel-heading">
+            <label class="panel-title">Graph Options</label>
+            <span class="pull-right clickable" style="cursor: pointer;"><i class="glyphicon glyphicon-chevron-down"></i></span>
+        </div>
+        <div class="panel-body">
+            <fieldset>
+                <p>Click on legend elements below to toggle highlighting on the graph.</p>
+                <p><a href="#" onClick="return highlight('org', '__ALL__')" ;>Highlight All</a></p>
+                <label>Element Colors</label>
+                <ul class="color-list">
+                    {% for fo, val in found_orgs.items %}
+                        {% if ORG_CACHE|get_item:fo|upper %}
+                            <li>
+                                <a href="#" onClick="return highlight('org', '{{ fo|upper }}');"><span class="fas fa-square" style="color: {{ ORG_CACHE|get_item:fo }};"></span> {{ fo|upper }}
+                                </a></li>
+                        {% endif %}
+                    {% endfor %}
+                </ul>
+                <label>Rim Colors</label>
+                <ul class="rim-list">
+                    {% for mat in found_mats %}
+                        <li>
+                            <a href="#" onClick="return highlight('maturity', '{{ mat }}');"><span class="far fa-circle" style="color: {{ MATURITY_MAP|get_item:mat }};"></span>
+                                Maturity: {{ mat }}</a></li>
+                    {% endfor %}
+                    {% if found_bottleneck %}
+                        <li>
+                            <a href="#" onClick="return highlight('bottleneck', '');"><span class="far fa-circle" style="color: #000000;"></span>
+                                Bottleneck to Ratification</a></li>
+                    {% endif %}
+                </ul>
+            </fieldset>
+            <div>
+                <div>
+                    <div>
+                        <form method="GET">
+                            <table border="0" class="controls">
+                                <tbody>
+                                <tr>
+                                    <td><b>Modules:</b></td>
+                                    <td>
+                                        <input type="text" value="{{ modules|implode }}" data-role="tagsinput" id="modtags" name="modtags">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><b>Orgs:</b></td>
+                                    <td>
+                                        <input type="text" value="{{ orgs|implode }}" data-role="tagsinput" id="orgtags" name="orgtags">
+                                    </td>
+                                </tr>
+                                <tr>
+                                    <td><b>Recursion
+                                        Levels:</b>&nbsp;&nbsp;&nbsp;<input type="text" id="recursion" size="2" value="{{ recurse }}" name="recursion">
+                                    </td>
+                                    <td><b>Include Ratified
+                                        Standards?</b>&nbsp;&nbsp;&nbsp;<input type="checkbox" id="show_rfcs" value="1" name="show_rfcs" {% if show_rfcs %}checked{% endif %}>
+                                    </td>
+                                    <td><b>Include
+                                        Sub-modules?</b>&nbsp;&nbsp;&nbsp;<input type="checkbox" id="show_subm" value="1" name="show_subm" {% if show_subm %}checked{% endif %}>
+                                    </td>
+                                    <td><b>Show Graph
+                                        Direction:</b>&nbsp;&nbsp;&nbsp;<select id="show_dir" name="show_dir" data-html="true" data-toggle="tooltip" title="{{ DIR_HELP_TEXT }}">
+                                        <option value="both" {% if show_dir == 'both' %}selected{% endif %}>Both
+                                        </option>
+                                        <option value="dependencies" {% if show_dir == 'dependencies' %}selected{% endif %}>
+                                            Dependencies Only
+                                        </option>
+                                        <option value="dependents" {% if show_dir == 'dependents' %}selected{% endif %}>
+                                            Dependents Only
+                                        </option>
+                                    </select></td>
+                                </tr>
+                                <tr>
+                                    <td>
+                                        <button type="submit" class="btn btn-primary" id="graph_commit">Generate
+                                        </button>
+                                    </td>
+                                    <td>
+                                        <button type="submit" class="btn" id="graph_export">Export</button>
+                                    </td>
+                                </tr>
+                                </tbody>
+                            </table>
+                        </form>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script>
+
+        $('#orgtags').tagsinput({
+            typeaheadjs: {
+                name: 'org_completions',
+                limit: 100,
+                source: function (query, syncResults, asyncResults) {
+                    $.get('completions/org/' + query, function (data) {
+                        asyncResults(data);
+                    });
+                }
+            }
+        });
+
+        $('#modtags').tagsinput({
+            typeaheadjs: {
+                name: 'mod_completions',
+                limit: 100,
+                source: function (query, syncResults, asyncResults) {
+                    $.get('completions/module/' + query, function (data) {
+                        asyncResults(data);
+                    });
+                }
+            }
+        });
+    </script>
+    <div id="cy" style="width:100%;height:100%;position:absolute;left:0;"></div>
+</div>
+</body>
+</html>

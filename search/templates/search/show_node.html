@@ -1,0 +1,39 @@
+{% load staticfiles %}
+{% load search_extras %}
+
+<!DOCTYPE html>
+<html>
+<head>
+    <title>YANG Definition for '{{ show_node.path }}'</title>
+    <link rel="stylesheet" href="{% static "css/bootstrap.min.css" %}" crossorigin="anonymous">
+    <link rel="stylesheet" href="{% static "css/bootstrap-theme.min.css" %}" crossorigin="anonymous">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+    <script src="{% static "js/bootstrap.min.js" %}" crossorigin="anonymous"></script>
+</head>
+<body>
+<div class="container" role="main">
+    <div style="margin-top:20px;" id="alert_container">
+        {% for alert in alerts %}
+            <div class="row">
+                <div class="col-sm-8">
+                    <div class="alert alert-danger alert-dismissible" role="alert">
+                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                            <span aria-hidden="true">&times;</span></button>
+                        <strong>ERROR!</strong> {{ alert }}
+                    </div>
+                </div>
+            </div>
+        {% endfor %}
+
+    </div>
+{% if properties %}
+    <div class="page-header">
+        <h3>YANG Definition for '{{ show_node.path }}'</h3>
+    </div>
+    <pre>{{ show_node|print_properties|safe }}
+    </pre>
+{% endif %}
+</div>
+</body>
+</html>

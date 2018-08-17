@@ -1,0 +1,294 @@
+<!DOCTYPE html>
+
+{% load staticfiles %}
+{% load search_extras %}
+
+<html lang="en">
+<head>
+    {% if search_term %}
+        <title>Yang DB Search for {{ search_term }}</title>
+    {% else %}
+        <title>Yang DB Search</title>
+    {% endif %}
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <script type="text/javascript"
+            src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js"
+            integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
+    <script type="text/javascript"
+            src="//cdnjs.cloudflare.com/ajax/libs/datatables/1.10.12/js/jquery.dataTables.min.js"
+            integrity="sha256-TX6POJQ2u5/aJmHTJ/XUL5vWCbuOw0AQdgUEzk4vYMc=" crossorigin="anonymous"></script>
+    <script type="text/javascript"
+            src="//cdnjs.cloudflare.com/ajax/libs/datatables/1.10.12/js/dataTables.bootstrap.min.js"
+            integrity="sha256-90YqnHom4j8OhcEQgyUI2IhmGYTBO54Adcf3YDZU9xM=" crossorigin="anonymous"></script>
+    <link rel="stylesheet" href="//cdnjs.cloudflare.com/ajax/libs/datatables/1.10.12/css/dataTables.bootstrap.min.css"
+          integrity="sha256-7MXHrlaY+rYR1p4jeLI23tgiUamQVym2FWmiUjksFDc=" crossorigin="anonymous"/>
+    <link rel="stylesheet" type="text/css" href="{% static "css/bootstrap.min.css" %}"/>
+    <link rel="stylesheet" type="text/css" href="{% static "css/bootstrap-theme.min.css" %}"/>
+    <script type="text/javascript" src="{% static "js/bootstrap.min.js" %}"></script>
+    <script type="text/javascript" src="{% static "js/doc_functions.js" %}"></script>
+</head>
+<body>
+
+{% if search_term %}
+
+    <div class="container" role="main" style="width: 100%;">
+        <div style="margin-top:20px;" id="alert_container">
+
+            {% if alerts %}
+                {% for alert in alerts %}
+                    <div class="row">
+                        <div class="col-sm-8">
+                            <div class="alert alert-danger alert-dismissible" role="alert">
+                                <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                    <span aria-hidden="true">&times;</span></button>
+                                <strong>ERROR!</strong> {{ alert }}
+                            </div>
+                        </div>
+                    </div>
+                {% endfor %}
+            {% endif %}
+        </div>
+        <script>
+            var tableColumns = ["Name", "Revision", "Schema Type", "Path", "Module", "Origin", "Organization", "Maturity", "Imported By # Modules", "Compilation Status", "Description"];
+            {#var tableColumns = JSON.parse('{{ new_columns }}');#}
+            var prev_idx = -1;
+            var dt;
+            $.fn.dataTable.ext.search.push(function (settings, sdata, rindex, rdata, counter) {
+                var idx = $('#column_filter').val();
+                if (idx == -1) {
+                    return true;
+                }
+                var stext = $('#datatable_filter label input').val();
+                var col = sdata[idx] || '';
+                if (col.toLowerCase().indexOf(stext.toLowerCase()) != -1) {
+                    return true;
+                }
+                return false;
+            });
+
+            function do_search(s) {
+                var idx = s.value;
+                if (prev_idx == idx) {
+                    return;
+                }
+                stext = $('#datatable_filter label input').val();
+                dt.search('').columns().search('').draw();
+                prev_idx = idx;
+                if (idx == -1) {
+                    dt.search(stext).draw();
+                } else {
+                    dt.search(stext).columns(idx).search(stext).draw();
+                }
+            }
+
+            $(document).ready(function () {
+                dt = $('#datatable').DataTable({
+                    "columnDefs": [
+                        {"type": "num", "targets": 8}
+                    ]
+                });
+                var newHtml = '<select id="column_filter" name="column_filter" onChange="do_search(this);"><option value="-1">Entire Table</option>';
+                $.each(tableColumns, function (key, val) {
+                    newHtml += '<option value="' + key + '">' + val + '</option>';
+                });
+                newHtml += '</select>';
+                $('#datatable_filter label').after(' ' + newHtml);
+            });
+        </script>
+        <div class="page-header">
+            <h3>YANG DB Search Results for '{{ search_term }}'</h3>
+        </div>
+        <table id="datatable" class="table table-bordered table-responsive" width="100%" cellspacing="0">
+            <thead>
+            <tr>
+                {% for tc in search_columns %}
+                    <th>{{ tc }}</th>
+                {% endfor %}
+            </tr>
+            </thead>
+            <tbody>
+            {% for result in results %}
+                <tr>
+                    <td>
+                        {#                TODO: this is link to entry description#}
+                        <a href="{% url "search:show_node" name=result.name path=result.path|norm_path revision=result.revision %}">{{ result.node_name }}</a>
+                    </td>
+                    <td>{{ result.revision }}</td>
+                    <td>{{ result.type }}</td>
+                    <td>{{ result.path }}</td>
+
+                    <td>{{ result.name }}<br/>
+
+                        <span style="font-size: small">(<a href="{% url "search:module_details" result.name %}"><img src="{% static "img/details.png" %}" border="0" title="Module Details for {{ result.name }}"> Module Details</a> |
+              <a href="{% url "search:yang_tree" result.name %}"><img border="0" src="{% static "img/leaf.png" %}" title="Tree View for {{ result.name }}">
+              Tree View</a>
+              |
+              <a href="{% url "search:impact_analysis" result.name %}"><img src="{% static "img/impact.png" %}" border="0" title="Impact Analysis for {{ result.name }}">
+                Impact Analysis</a>)</span></td>
+                    <td>{{ result.origin }}</td>
+                    <td>{{ result.organization }}</td>
+                    <td>{{ result.maturity }}</td>
+                    <td>{{ result.dependents }}</td>
+                    {% if result.compile_status %}
+                        <td>{{ result.compile_status }}</td>
+                    {% else %}
+                        <td>N/A</td>
+                    {% endif %}
+                    <td>{{ result.description }}</td>
+                </tr>
+            {% endfor %}
+            </tbody>
+        </table>
+    </div>
+
+{% else %}
+
+    <div class="container" role="main" style="width: 100%;">
+        <div style="margin-top:20px;" id="alert_container">
+            <div class="page-header">
+                <h3>YANG DB Search</h3>
+            </div>
+            <div class="row">
+                <div class="col-sm-8">
+                    <form>
+                        {% csrf_token %}
+                        <div class="form-group">
+                            <label for="search_string">Enter your search term(s) below:</label>
+                            <input type="text" name="search_string" id="search_string" class="form-control"
+                                   placeholder="Search String">
+                        </div>
+                        <div class="panel panel-default">
+                            <div class="panel-heading">
+                                <label class="panel-title">Search Options</label>
+                                <span class="pull-right clickable panel-collapsed" style="cursor: pointer;"><i
+                                        class="glyphicon glyphicon-chevron-down"></i></span>
+                            </div>
+                            <div class="panel-body" style="display: none;">
+                                <table class="table table-default">
+                                    <tbody>
+                                    <tr>
+                                        <td>
+                                            <div class="checkbox">
+                                                <label for="caseSensitive">
+                                                    <input id="caseSensitive" type="checkbox" name="case"
+                                                           style="margin-top: 0;"
+                                                           value="1"> Case-Sensitive
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="checkbox">
+                                                <label for="regexp">
+                                                    <input id="regexp" type="checkbox" name="regexp" style="margin-top: 0;"
+                                                           value="1"> Regular Expression
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="checkbox">
+                                                <label for="includeMIBs">
+                                                    <input id="includeMIBs" type="checkbox" name="includeMIBs"
+                                                           style="margin-top: 0;" value="1"> Include MIBs
+                                                </label>
+                                            </div>
+                                        </td>
+                                        <td>
+                                            <div class="checkbox">
+                                                <label for="onlyLatest">
+                                                    <input id="onlyLatest" type="checkbox" name="onlyLatest"
+                                                           style="margin-top: 0;"
+                                                           value="1" checked> Only Show Latest Revisions
+                                                </label>
+                                            </div>
+                                        </td>
+                                    </tr>
+                                    </tbody>
+                                </table>
+                                <label>Search Fields</label>
+                                <div class="checkbox">
+                                    <label for="fieldsAll">
+                                        <input type="checkbox" id="fieldsAll" name="fieldsAll" style="margin-top: 0;"
+                                               value="1"
+                                               checked> All
+                                    </label>
+                                </div>
+                                <table class="table table-bordered">
+                                    <tbody>
+                                    <tr>
+                                        {% for key, value in search_fields.items %}
+                                            <td>
+                                                <div class="checkbox">
+                                                    <label for="field_{{ value }}">
+                                                        <input id="field_{{ value }}>" type="checkbox" name="searchFields[]"
+                                                               class="yang-fields-select" style="margin-top: 0;"
+                                                               value="{{ value }}"
+                                                               checked> {{ key }}
+                                                    </label>
+                                                </div>
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+                                    </tbody>
+                                </table>
+                                <label>YANG Versions</label>
+                                <table class="table table-bordered">
+                                    <tbody>
+                                    <tr>
+                                        {% for version in yang_versions %}
+                                            <td>
+                                                <div class="checkbox">
+                                                    <label for="ver_{{ version }}">
+                                                        <input id="ver_{{ version }}" type="checkbox" name="yangVersions[]"
+                                                               style="margin-top: 0;" value="{{ version }}"
+                                                               checked> {{ version }}
+                                                    </label>
+                                                </div>
+                                            </td>
+                                        {% endfor %}
+                                    </tr>
+
+                                    </tbody>
+                                </table>
+                                <label>Schema Types</label>
+                                <div class="checkbox">
+                                    <label for="schemaAll">
+                                        <input type="checkbox" id="schemaAll" name="schemaAll" style="margin-top: 0;"
+                                               value="1"
+                                               checked> All
+                                    </label>
+                                </div>
+                                <table class="table table-bordered">
+                                    <tbody>
+                                    {% for row in schema_types %}
+                                        <tr>
+                                            {% for key, value in row.items %}
+                                                <td>
+                                                    <div class="checkbox">
+                                                        <label for="schema{{ key }}">
+                                                            <input id="schema{{ key }}" type="checkbox" name="schemaTypes[]"
+                                                                   class="yang-schema-select" style="margin-top: 0;"
+                                                                   value="{{ value }}"
+                                                                   checked> {{ key }}
+                                                        </label>
+                                                    </div>
+                                                </td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                        <div class="form-group">
+                            <input type="submit" name="submit" value="Search!" class="btn btn-primary">
+                            <input type="reset" name="reset" value="Reset" class="btn btn-default">
+                        </div>
+                    </form>
+                </div>
+            </div>
+        </div>
+    </div>
+{% endif %}
+
+</body>
+</html>
