@@ -19,7 +19,7 @@ from django.conf.urls.static import static
 from django.conf import settings
 
 urlpatterns = [
-    path('yang/', include('search.urls')),
-    path('admin/', admin.site.urls),
+    path('yang-search/', include('search.urls'))
+#    path('admin/', admin.site.urls),
 ]
 # ] + static(settings.STATIC_URL, document_root=settings.STATIC_ROOT)

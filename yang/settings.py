@@ -25,7 +25,7 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 config = configparser.ConfigParser()
-config.read('/home/tomas/yang_search/yang/config.ini')
+config.read('config.ini')
 dbname = config.get('DB-Section', 'dbname')
 dbuser = config.get('DB-Section', 'dbuser')
 dbpassword = config.get('DB-Section', 'dbpassword')
@@ -38,7 +38,8 @@ DEBUG = False
 
 ALLOWED_HOSTS = [
     'yangcatalog.org',
-    'www.yangcatalog.org'
+    'www.yangcatalog.org',
+    'new.yangcatalog.org'
 ]
 
 # Application definition
@@ -130,7 +131,7 @@ USE_TZ = True
 # Static files (CSS, JavaScript, Images)
 # https://docs.djangoproject.com/en/2.0/howto/static-files/
 
-STATIC_URL = '/yang/static/'
+STATIC_URL = '/yang-search/static/'
 
 STATICFILES_DIRS = (
     os.path.join(BASE_DIR, 'static'),
@@ -145,12 +146,12 @@ LOGGING = {
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': '/home/tomas/logs/debug.log',
+            'filename': '/tmp/yang_search_debug.log',
         },
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'filename': '/home/tomas/logs/debug.log',
+            'filename': '/yang_search_debug.log',
         },
     },
     'loggers': {

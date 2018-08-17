@@ -367,7 +367,7 @@ def metadata_update(request):
     :return: calls scripts for database update and file generation 
     """
     config = configparser.ConfigParser()
-    config.read('/home/tomas/yang_search/yang/config.ini')
+    config.read('config.ini')
     update_signature = config.get('DB-Section', 'update_signature')
     lock_count = 0
     body_unicode = request.body.decode('utf-8')

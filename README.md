@@ -4,7 +4,7 @@ Yang-search
 ## Django version basics
 
 **PROJECT STRUCTURE:**
-
+```
 ├── LICENSE  
 ├── README.md  
 ├── search | django application dir   
@@ -23,14 +23,15 @@ Yang-search
     ├── settings.py | default django settings  
     ├── urls.py  
     └── wsgi.py  
+```
 
 **URL SCHEME**
 
-/   
-/show_node/        
-/yang_tree/
-/impact_analysis/
-/module_details/
+* /    the home page
+* /show_node/        
+* /yang_tree/
+* /impact_analysis/
+* /module_details/
 
 **DATABASE STRUCTURE:**
 
@@ -69,10 +70,22 @@ viable for production.
 `sed -i '1s/^/SET autocommit=0;\n/' /$PATH/foo.dump`  
 `mysql -u $DBUSER -p$DBPASSWORD $DBNAME < /$PATH/foo.dump`  
 
+**Dependancies**
+
  * Python version currently is 3.5.5
  * Mysql version is 5.7.22
 
-requirements.txt contains python libraries
+requirements.txt contains Python libraries
+
+**Installation**
+
+Create a database in MySQL with read/write access for a user and execute the install.sql file (you can safely remove it after).
+
+Rename the config.ini.example into config.ini and insert the right information about the MySQL database.
+
+Ensure that your webserver:
+* will serve https://example.org/yang-search/static to 
+* will serve https://example.org/yang-search/ via the port of UWSGI
 
 uwsgi is running with command 
- *     uwsgi --chdir=$PATH_TO_DIR --module=yang.wsgi:application --env DJANGO_SETTINGS_MODULE=yang.settings --socket :$SOCKET --home=$PATH_TO_VENV --logto=$PATH_TO_LOG
+ `uwsgi --chdir=$PATH_TO_DIR --module=yang.wsgi:application --env DJANGO_SETTINGS_MODULE=yang.settings --socket :$SOCKET --home=$PATH_TO_VENV --logto=$PATH_TO_LOG`
