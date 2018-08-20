@@ -76,16 +76,3 @@ viable for production.
  * Mysql version is 5.7.22
 
 requirements.txt contains Python libraries
-
-**Installation**
-
-Create a database in MySQL with read/write access for a user and execute the install.sql file (you can safely remove it after).
-
-Rename the config.ini.example into config.ini and insert the right information about the MySQL database.
-
-Ensure that your webserver:
-* will serve https://example.org/yang-search/static to 
-* will serve https://example.org/yang-search/ via the port of UWSGI
-
-uwsgi is running with command 
- `uwsgi --chdir=$PATH_TO_DIR --module=yang.wsgi:application --env DJANGO_SETTINGS_MODULE=yang.settings --socket :$SOCKET --home=$PATH_TO_VENV --logto=$PATH_TO_LOG`
