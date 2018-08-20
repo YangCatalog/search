@@ -6,6 +6,10 @@ Create a database in MySQL with read/write access for a user and execute the ins
 
 Rename the config.ini.example into config.ini and insert the right information about the MySQL database.
 
+**Tree information**
+
+/var/yang/ytrees should contain one .json file per YANG module (with the tree information).
+
 **Cron**
 
 There are no specific cron jobs.
