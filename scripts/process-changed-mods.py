@@ -46,8 +46,6 @@ parser = argparse.ArgumentParser(
     description="Process changed modules in a git repo")
 parser.add_argument('--time', type=str,
                     help='Modified time argument to find(1)', required=False)
-parser.add_argument('--dbf', type=str,
-                    help='Path to the database file', required=True)
 args = parser.parse_args()
 
 if args.time:
@@ -91,10 +89,10 @@ except Exception as e:
 
 if len(del_list) > 0:
     try:
-        con = MySQLdb.connect(host="localhost",  # your host, usually localhost
-                               user="yang",  # your username
-                               passwd="Y@ng3r123",  # your password
-                               db="yang")  # name of the data base
+        con = MySQLdb.connect(host= os.environ['DBHOST'],
+                               user= os.environ['DBUSER'],
+                               passwd= os.environ['DBPASSWD'],
+                               db= os.environ['DBNAME'])
         cur = con.cursor(cursorclass=MySQLdb.cursors.DictCursor)
         for mod in del_list:
             mname = mod.split('@')[0]
@@ -117,6 +115,7 @@ if len(del_list) > 0:
         print("Error connecting to DB: {}".format(e.args[0]))
 
 if len(mod_list) == 0:
+    print("No module to be processed. Exiting.")
     sys.exit(0)
 
 mod_args = []

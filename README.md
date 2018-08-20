@@ -3,10 +3,11 @@ Yang-search
 
 ## Django version basics
 
-**PROJECT STRUCTURE:**
+###PROJECT STRUCTURE
 ```
 ├── LICENSE  
 ├── README.md  
+├── scripts | database handling
 ├── search | django application dir   
 │   ├── apps.py    
 │   ├── models.py | defines database structure  
@@ -25,15 +26,16 @@ Yang-search
     └── wsgi.py  
 ```
 
-**URL SCHEME**
+###URL SCHEME
 
-* /    the home page
+* /  =>   the home page
 * /show_node/        
 * /yang_tree/
 * /impact_analysis/
 * /module_details/
+* /metadata_update/ => called when a module is created or deleted, check signature, then save the changes in JSON files (to be picked up by a cronjob later)
 
-**DATABASE STRUCTURE:**
+###DATABASE STRUCTURE
 
  * **table yindex**
  * module = CharField(max_length=255, blank=True, null=True)
@@ -70,7 +72,7 @@ viable for production.
 `sed -i '1s/^/SET autocommit=0;\n/' /$PATH/foo.dump`  
 `mysql -u $DBUSER -p$DBPASSWORD $DBNAME < /$PATH/foo.dump`  
 
-**Dependancies**
+###Dependancies
 
  * Python version currently is 3.5.5
  * Mysql version is 5.7.22
