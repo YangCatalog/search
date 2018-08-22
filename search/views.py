@@ -383,8 +383,8 @@ def metadata_update(request):
     :return: calls scripts for database update and file generation 
     """
     config = configparser.ConfigParser()
-    config.read('config.ini')
-    update_signature = config.get('DB-Section', 'update_signature')
+    config.read('/etc/yangcatalog.conf')
+    update_signature = config.get('Yang-Search-Section', 'update_signature')
     lock_count = 0
     body_unicode = request.body.decode('utf-8')
     signature = create_signature(update_signature, body_unicode)

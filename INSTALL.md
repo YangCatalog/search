@@ -4,7 +4,7 @@
 
 Create a database in MySQL with read/write access for a user and execute the install.sql file (you can safely remove it after).
 
-Rename the config.ini.example into config.ini and insert the right information about the MySQL database.
+Be sure that /etc/yangcatalog.conf has the right information about MySQL database and credentials as well as the secret token for the metadata update.
 
 **Tree information**
 

@@ -41,11 +41,12 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 
 # SECURITY WARNING: keep the secret key used in production secret!
 config = configparser.ConfigParser()
-config.read('config.ini')
-dbname = config.get('DB-Section', 'dbname')
-dbuser = config.get('DB-Section', 'dbuser')
-dbpassword = config.get('DB-Section', 'dbpassword')
-django_secret_key = config.get('DB-Section', 'django_secret_key')
+config.read('/etc/yangcatalog.conf')
+dbhost = config.get('DB-Section', 'host')
+dbname = config.get('DB-Section', 'name')
+dbuser = config.get('DB-Section', 'user')
+dbpassword = config.get('DB-Section', 'password')
+django_secret_key = config.get('Yang-Search-Section', 'django_secret_key')
 
 SECRET_KEY = django_secret_key
 
@@ -106,6 +107,7 @@ WSGI_APPLICATION = 'yang.wsgi.application'
 DATABASES = {
     'default': {
         'ENGINE': 'django.db.backends.mysql',
+        'HOST': dbhost,
         'NAME': dbname,
         'USER': dbuser,
         'PASSWORD': dbpassword,

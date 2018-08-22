@@ -16,7 +16,7 @@ Read the JSON file YANG_CACHE_FILE for the list of modules (also making a .bak b
 
 Read the JSON file YANG_DELETE_FILE for the list of deleted modules (also making a .bak before truncating it to 0), then request SQL to delete the rows related to deleted modules.
 
-**Note:** the two JSON files are actually created by an external process calling the web service at /yang-search/metadata-update/
+**Note:** the two JSON files are actually created by an external process calling the web service at /yang-search/metadata_update/
 
 Finally, calls `build_yindex.sh` with the `--time` argument and the list of all modules to be processed.
 
