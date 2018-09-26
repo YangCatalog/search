@@ -1,6 +1,6 @@
 # Copyright 2018 Cisco and its afficiliates
 # 
-# Authors Joe Clarke jclarke@cisco.com and Tomás Markovic <Tomas.Markovic@pantheon.tech> for the Python version
+# Authors Joe Clarke jclarke@cisco.com and Tomas Markovic <Tomas.Markovic@pantheon.tech> for the Python version
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -45,8 +45,8 @@ schema_types = [{'Typedef': 'typedef', 'Grouping': 'grouping', 'Feature': 'featu
                 {'Container': 'container', 'List': 'list', 'Leaf-List': 'leaf-list'},
                 {'Leaf': 'leaf', 'Notification': 'notification', 'Action': 'action'}]
 
-CHANGES_CACHE = '/usr/share/nginx/yang2_repo_cache.dat'
-DELETE_CACHE = '/usr/share/nginx/yang2_repo_deletes.dat'
+CHANGES_CACHE = '/var/yang/yang2_repo_cache.dat'
+DELETE_CACHE = '/var/yang/yang2_repo_deletes.dat'
 REST_TIMEOUT = 300
 LOCKF = '/tmp/webhook.lock'
 
@@ -321,7 +321,7 @@ def create_signature(secret_key, string):
     hexadecimal ASCII digits.
     """
     string_to_sign = string.encode('utf-8')
-    string_to_sign = b'\n' + string_to_sign
+    string_to_sign = string_to_sign
     hmac = HMAC.new(secret_key.encode('utf-8'), string_to_sign, SHA)
     return hmac.hexdigest()
 
@@ -394,8 +394,9 @@ def metadata_update(request):
         time.sleep(3)
         lock_count += 1
     try:
-        res = os.utime(LOCKF, None)
-        if not res:
+        try:
+            open(LOCKF, 'w').close()
+        except:
             raise Exception('Failed to obtain lock ' + LOCKF)
 
         if request.META.get('REQUEST_METHOD') is None or request.META['REQUEST_METHOD'] != 'POST':
@@ -407,18 +408,22 @@ def metadata_update(request):
         changes_cache = dict()
         delete_cache = dict()
         if os.path.exists(CHANGES_CACHE) and os.path.getsize(CHANGES_CACHE) > 0:
-            changes_cache = json.loads(open(CHANGES_CACHE))
+            f = open(CHANGES_CACHE)
+            changes_cache = json.load(f)
+            f.close()
         if os.path.exists(DELETE_CACHE) and os.path.getsize(DELETE_CACHE) > 0:
-            delete_cache = json.loads(open(DELETE_CACHE))
+            f = open(DELETE_CACHE)
+            delete_cache = json.load(f)
+            f.close()
 
         js = json.loads(body_unicode)
-        if js.get(['modules-to-index']) is None:
+        if js.get('modules-to-index') is None:
             js['modules-to-index'] = []
 
-        if js.get(['modules-to-delete']) is None:
+        if js.get('modules-to-delete') is None:
             js['modules-to-delete'] = []
 
-        for mname, mpath in js['modules-to-index']:
+        for mname, mpath in js['modules-to-index'].items():
             changes_cache[mname] = mpath
         for mname in js['modules-to-delete']:
             if [k for k, v in delete_cache.items() if v == mname][0]:
@@ -430,8 +435,10 @@ def metadata_update(request):
         fd.write(json.dumps(delete_cache))
         fd.close()
     except Exception as e:
+        os.unlink(LOCKF)
         raise Exception("Caught exception {}".format(e))
     os.unlink(LOCKF)
+    return HttpResponse(status=201)
 
 
 def yang_tree(request, module = ''):
