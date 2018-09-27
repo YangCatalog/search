@@ -40,8 +40,10 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+config_path = '/etc/yangcatalog/yangcatalog.conf'
 config = configparser.ConfigParser()
-config.read('/etc/yangcatalog.conf')
+config._interpolation = configparser.ExtendedInterpolation()
+config.read(config_path)
 dbhost = config.get('DB-Section', 'host')
 dbname = config.get('DB-Section', 'name-search')
 dbuser = config.get('DB-Section', 'user')

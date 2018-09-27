@@ -45,10 +45,7 @@ schema_types = [{'Typedef': 'typedef', 'Grouping': 'grouping', 'Feature': 'featu
                 {'Container': 'container', 'List': 'list', 'Leaf-List': 'leaf-list'},
                 {'Leaf': 'leaf', 'Notification': 'notification', 'Action': 'action'}]
 
-CHANGES_CACHE = '/var/yang/yang2_repo_cache.dat'
-DELETE_CACHE = '/var/yang/yang2_repo_deletes.dat'
 REST_TIMEOUT = 300
-LOCKF = '/tmp/webhook.lock'
 
 alerts = []
 MATURITY_UNKNOWN = '#663300'
@@ -382,22 +379,24 @@ def metadata_update(request):
     :param request: Array with arguments from rest request.
     :return: calls scripts for database update and file generation 
     """
+    config_path = '/etc/yangcatalog/yangcatalog.conf'
     config = configparser.ConfigParser()
-    config.read('/etc/yangcatalog.conf')
+    config._interpolation = configparser.ExtendedInterpolation()
+    config.read(config_path)
+    changes_cache_dir = config.get('Directory-Section', 'changes-cache')
+    delete_cache_dir = config.get('Directory-Section', 'delete-cache')
     update_signature = config.get('Yang-Search-Section', 'update_signature')
-    lock_count = 0
+    lock_file = config.get('Directory-Section', 'lock')
+
     body_unicode = request.body.decode('utf-8')
     signature = create_signature(update_signature, body_unicode)
-    while os.path.exists(LOCKF):
-        if lock_count > 20:
-            return HttpResponse(status=500)
-        time.sleep(3)
-        lock_count += 1
+    while os.path.exists(lock_file):
+        time.sleep(10)
     try:
         try:
-            open(LOCKF, 'w').close()
+            open(lock_file, 'w').close()
         except:
-            raise Exception('Failed to obtain lock ' + LOCKF)
+            raise Exception('Failed to obtain lock ' + lock_file)
 
         if request.META.get('REQUEST_METHOD') is None or request.META['REQUEST_METHOD'] != 'POST':
             raise Exception('Invalid request method')
@@ -407,12 +406,12 @@ def metadata_update(request):
 
         changes_cache = dict()
         delete_cache = dict()
-        if os.path.exists(CHANGES_CACHE) and os.path.getsize(CHANGES_CACHE) > 0:
-            f = open(CHANGES_CACHE)
+        if os.path.exists(changes_cache_dir) and os.path.getsize(changes_cache_dir) > 0:
+            f = open(changes_cache_dir)
             changes_cache = json.load(f)
             f.close()
-        if os.path.exists(DELETE_CACHE) and os.path.getsize(DELETE_CACHE) > 0:
-            f = open(DELETE_CACHE)
+        if os.path.exists(delete_cache_dir) and os.path.getsize(delete_cache_dir) > 0:
+            f = open(delete_cache_dir)
             delete_cache = json.load(f)
             f.close()
 
@@ -428,16 +427,16 @@ def metadata_update(request):
         for mname in js['modules-to-delete']:
             if [k for k, v in delete_cache.items() if v == mname][0]:
                 delete_cache.append(mname)
-        fd = open(CHANGES_CACHE, 'w')
+        fd = open(changes_cache_dir, 'w')
         fd.write(json.dumps(changes_cache))
         fd.close()
-        fd = open(DELETE_CACHE, 'w')
+        fd = open(delete_cache_dir, 'w')
         fd.write(json.dumps(delete_cache))
         fd.close()
     except Exception as e:
-        os.unlink(LOCKF)
+        os.unlink(lock_file)
         raise Exception("Caught exception {}".format(e))
-    os.unlink(LOCKF)
+    os.unlink(lock_file)
     return HttpResponse(status=201)
 
 
