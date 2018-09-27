@@ -156,8 +156,7 @@ if __name__ == '__main__':
             f.close()
         os.unlink(lock_file)
 
-    #if args.time:
-    #    find_args = ['-f', args.time]
+
 
     if len(delete_cache) > 0:
         try:
@@ -191,8 +190,8 @@ if __name__ == '__main__':
         os.unlink(lock_file_cron)
         sys.exit(0)
 
-    #LOGGER.info('Pulling latest yangModels/yang repository')
-    #pull(yang_models)
+    LOGGER.info('Pulling latest yangModels/yang repository')
+    pull(yang_models)
 
     mod_args = []
     if type(changes_cache) is list:

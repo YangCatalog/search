@@ -1,3 +1,22 @@
+# Copyright 2018 Cisco and its affiliates
+#
+# Licensed under the Apache Licparse_allense, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
+
+__author__ = "Miroslav Kovac and Joe Clarke"
+__copyright__ = "Copyright 2018 Cisco and its affiliates"
+__license__ = "Apache License, Version 2.0"
+__email__ = "miroslav.kovac@pantheon.tech, jclarke@cisco.com"
+
 import os
 import subprocess
 
@@ -5,7 +24,7 @@ import MySQLdb
 import MySQLdb.cursors
 from pyang.plugins.json_tree import emit_tree
 from pyang.plugins.name import emit_name
-from pyang.plugins.yang_catalog_index import emit_index, IndexerPlugin
+from pyang.plugins.yang_catalog_index import IndexerPlugin
 
 from scripts.add_catalog_data import add_data
 from scripts.yangParser import create_context
@@ -53,8 +72,12 @@ def build_yindex(private_secret, ytree_dir, modules,
             LOGGER.info('yindex on module {}. module {} out of {}'.format(module.split('/')[-1], x, len(modules)))
             # split to module with path and organization
             m_parts = module.split(":")
-            m = m_parts[0]
-            org = m_parts[1]
+            org = None
+            if len(m_parts) > 1:
+                m = m_parts[0]
+                org = m_parts[1]
+            else:
+                m = m_parts[0]
             ctx = create_context(os.path.abspath(m))
             with open(m, 'r') as f:
                  a = ctx.add_module(m, f.read())
@@ -77,7 +100,7 @@ def build_yindex(private_secret, ytree_dir, modules,
                 name = name_revision[0]
                 revision = name_revision[1]
             else:
-                name = name_revision
+                name = name_revision[0]
                 revision = '1970-01-01'
             cur.execute("""DELETE FROM modules_temp WHERE module=%s AND revision=%s""", (name, revision,))
             cur.execute("""DELETE FROM yindex_temp WHERE module=%s AND revision=%s""", (name, revision,))
@@ -89,8 +112,9 @@ def build_yindex(private_secret, ytree_dir, modules,
                     yindex_insert_into = yindex_insert_into.replace('insert into yindex', 'insert into yindex_temp')
                     cur.execute(yindex_insert_into)
             cur.execute("""UPDATE modules_temp SET file_path=%s WHERE module=%s AND revision=%s""", (m, name, revision,))
-            cur.execute("""UPDATE modules_temp SET organization=%s WHERE module=%s AND revision=%s""", (org, name, revision,))
-            cur.execute("""UPDATE yindex_temp SET organization=%s WHERE module=%s AND revision=%s""", (org, name, revision,))
+            if org is not None:
+                cur.execute("""UPDATE modules_temp SET organization=%s WHERE module=%s AND revision=%s""", (org, name, revision,))
+                cur.execute("""UPDATE yindex_temp SET organization=%s WHERE module=%s AND revision=%s""", (org, name, revision,))
 
             with open('{}/{}@{}'.format(ytree_dir, name, revision), 'w') as f:
                 emit_tree([a], f, ctx)
