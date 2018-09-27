@@ -1,9 +1,14 @@
 import os
 import subprocess
+
 import MySQLdb
 import MySQLdb.cursors
-from scripts import add_catalog_data
+from pyang.plugins.json_tree import emit_tree
+from pyang.plugins.name import emit_name
+from pyang.plugins.yang_catalog_index import emit_index, IndexerPlugin
+
 from scripts.add_catalog_data import add_data
+from scripts.yangParser import create_context
 
 
 def __create_connection(dbHost, dbPass, dbName, dbUser):
@@ -35,7 +40,7 @@ def __run_query(query, cur):
     cur.execute(query)
 
 
-def build_yindex(private_secret, ytree_dir, modules, yang_models,
+def build_yindex(private_secret, ytree_dir, modules,
                  dbHost, dbPass, dbName, dbUser, lock_file_cron,
                  my_uri, LOGGER):
     conn, cur = __create_connection(dbHost, dbPass, dbName, dbUser)
@@ -50,35 +55,45 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
             m_parts = module.split(":")
             m = m_parts[0]
             org = m_parts[1]
+            ctx = create_context(os.path.abspath(m))
+            with open(m, 'r') as f:
+                 a = ctx.add_module(m, f.read())
+            with open('temp.txt', 'w') as f:
+                ctx.opts.print_revision = True
+                emit_name(ctx, [a], f)
+            with open('temp.txt', 'r') as f:
+                name_revision = f.read().strip()
+            with open('temp.txt', 'w') as f:
+                ctx.opts.yang_index_make_module_table = True
+                ctx.opts.yang_index_no_schema = True
+                plugin = IndexerPlugin()
+                plugin.emit(ctx,[a], f)
+            with open('temp.txt', 'r') as f:
+                yindex = f.read().strip()
+            os.unlink('temp.txt')
 
-            pyang_args = ['-p', yang_models, '-f', 'yang-catalog-index',
-                          '--yang-index-make-module-table', '--yang-index-no-schema',
-                          m]
-            yindex = __run_pyang_commands(pyang_args, decode=False)
-
-            pyang_args = ['-p', yang_models, '--name-print-revision', '-f',
-                          'name', m]
-            name_revision = __run_pyang_commands(pyang_args).strip()
-            name, revision = name_revision.split('@')
+            name_revision = name_revision.split('@')
+            if len(name_revision) > 1:
+                name = name_revision[0]
+                revision = name_revision[1]
+            else:
+                name = name_revision
+                revision = '1970-01-01'
             cur.execute("""DELETE FROM modules_temp WHERE module=%s AND revision=%s""", (name, revision,))
             cur.execute("""DELETE FROM yindex_temp WHERE module=%s AND revision=%s""", (name, revision,))
-            yindex_insert_intos = yindex.split(b'\n')
+            yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into').split('insert into')
             for yindex_insert_into in yindex_insert_intos:
-                yindex_insert_into = yindex_insert_into.replace(b'INSERT INTO', b'insert into')
-                if yindex_insert_into.startswith(b'insert into'):
-                    if yindex_insert_into.startswith(b'insert into modules'):
-                        yindex_insert_into = yindex_insert_into.replace(b"'", b'"')
-                    yindex_insert_into = yindex_insert_into.decode(encoding='utf-8', errors='strict')
+                if yindex_insert_into.startswith('modules') or yindex_insert_into.startswith('yindex'):
+                    yindex_insert_into = 'insert into {}'.format(yindex_insert_into)
                     yindex_insert_into = yindex_insert_into.replace('insert into modules', 'insert into modules_temp')
                     yindex_insert_into = yindex_insert_into.replace('insert into yindex', 'insert into yindex_temp')
                     cur.execute(yindex_insert_into)
             cur.execute("""UPDATE modules_temp SET file_path=%s WHERE module=%s AND revision=%s""", (m, name, revision,))
             cur.execute("""UPDATE modules_temp SET organization=%s WHERE module=%s AND revision=%s""", (org, name, revision,))
             cur.execute("""UPDATE yindex_temp SET organization=%s WHERE module=%s AND revision=%s""", (org, name, revision,))
-            pyang_args = ['-p', yang_models, '-f',
-                          'json-tree', '-o',
-                          '{}/{}@{}'.format(ytree_dir, name, revision), m]
-            __run_pyang_commands(pyang_args)
+
+            with open('{}/{}@{}'.format(ytree_dir, name, revision), 'w') as f:
+                emit_tree([a], f, ctx)
         add_data(conn, cur, private_secret, my_uri, LOGGER, lock_file_cron)
         try:
             conn.commit()

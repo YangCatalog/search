@@ -125,6 +125,8 @@ if __name__ == '__main__':
     if ((not os.path.exists(changes_cache_dir) or os.path.getsize(changes_cache_dir) <= 0)
             and (not os.path.exists(delete_cache_dir) or os.path.getsize(delete_cache_dir) <= 0)):
         LOGGER.info('No new modules are added or removed. Exiting script!!!')
+        os.unlink(lock_file)
+        os.unlink(lock_file_cron)
         sys.exit()
     else:
         if os.path.exists(changes_cache_dir) and os.path.getsize(changes_cache_dir) > 0:
@@ -206,7 +208,7 @@ if __name__ == '__main__':
             if not mod_path.startswith('/'):
                 mod_path = yang_models + '/' + mod_path
             mod_args.append(mod_path)
-    build_yindex.build_yindex(private_secret, ytree_dir, mod_args, yang_models,
+    build_yindex.build_yindex(private_secret, ytree_dir, mod_args,
                               dbHost, dbPass, dbName, dbUser, lock_file_cron,
                               my_uri, LOGGER)
     os.unlink(lock_file_cron)
