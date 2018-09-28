@@ -1,6 +1,6 @@
 # Copyright 2018 Cisco and its afficiliates
 # 
-# Authors Joe Clarke jclarke@cisco.com and Tomás Markovic <Tomas.Markovic@pantheon.tech> for the Python version
+# Authors Joe Clarke jclarke@cisco.com and Tomas Markovic <Tomas.Markovic@pantheon.tech> for the Python version
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
@@ -40,10 +40,12 @@ STATIC_ROOT = os.path.join(BASE_DIR, "staticfiles")
 # See https://docs.djangoproject.com/en/2.0/howto/deployment/checklist/
 
 # SECURITY WARNING: keep the secret key used in production secret!
+config_path = '/etc/yangcatalog/yangcatalog.conf'
 config = configparser.ConfigParser()
-config.read('/etc/yangcatalog.conf')
+config._interpolation = configparser.ExtendedInterpolation()
+config.read(config_path)
 dbhost = config.get('DB-Section', 'host')
-dbname = config.get('DB-Section', 'name')
+dbname = config.get('DB-Section', 'name-search')
 dbuser = config.get('DB-Section', 'user')
 dbpassword = config.get('DB-Section', 'password')
 django_secret_key = config.get('Yang-Search-Section', 'django_secret_key')
@@ -56,7 +58,8 @@ DEBUG = False
 ALLOWED_HOSTS = [
     'yangcatalog.org',
     'www.yangcatalog.org',
-    'new.yangcatalog.org'
+    'new.yangcatalog.org',
+    'localhost'
 ]
 
 # Application definition

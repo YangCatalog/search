@@ -30,110 +30,185 @@
 #
 # The 2nd argument is not more usefull as MySQL is used rather than SQLite
 #
-
-import json
-import sys
-import os
 import argparse
-from subprocess import call
+import configparser
+import json
+import logging
+import os
+import stat
+import sys
+
 import MySQLdb
+from git import Repo
+from git.cmd import Git
 
-mod_list = {}
-find_args = []
-del_list = []
+from scripts import build_yindex
 
-parser = argparse.ArgumentParser(
-    description="Process changed modules in a git repo")
-parser.add_argument('--time', type=str,
-                    help='Modified time argument to find(1)', required=False)
-args = parser.parse_args()
+__author__ = "Miroslav Kovac, Joe Clarke"
+__copyright__ = "Copyright 2018 Cisco and its affiliates"
+__license__ = "Apache License, Version 2.0"
+__email__ = "miroslav.kovac@pantheon.tech, jclarke@cisco.com"
 
-if args.time:
-    find_args = ['-f', args.time]
 
-try:
-    if os.path.getsize(os.environ['YANG_CACHE_FILE']) > 0:
-        fd = open(os.environ['YANG_CACHE_FILE'], 'r+')
-        mod_list = json.load(fd)
+def get_logger(name, file_name_path='yang.log'):
+    """Create formated logger with name of file yang.log
+        Arguments:
+            :param file_name_path: filename and path where to save logs.
+            :param name :  (str) Set name of the logger.
+            :return a logger with the specified name.
+    """
+    FORMAT = '%(asctime)-15s %(levelname)-8s %(name)5s => %(message)s - %(lineno)d'
+    DATEFMT = '%Y-%m-%d %H:%M:%S'
+    logging.basicConfig(datefmt=DATEFMT, format=FORMAT, filename=file_name_path, level=logging.INFO)
+    logger = logging.getLogger(name)
+    os.chmod(file_name_path, 0o664 | stat.S_ISGID)
+    return logger
 
-        # Backup the contents just in case.
-        bfd = open(os.environ['YANG_CACHE_FILE'] + '.bak', 'w')
-        json.dump(mod_list, bfd)
-        bfd.close()
 
-        # Zero out the main file.
-        fd.seek(0)
-        fd.truncate()
-        fd.close()
-except Exception as e:
-    print('Failed to read cache file {}'.format(e))
-    mod_list = {}
+def pull(repo_dir):
+    """
+    Pull all the new files in the master in specified directory.
+    Directory should contain path where .git file is located.
+    :param repo_dir: directory where .git file is located
+    """
+    g = Git(repo_dir)
+    g.pull()
+    a = Repo(repo_dir)
+    for s in a.submodules:
+        s.update(recursive=True, init=True)
 
-try:
-    if os.path.getsize(os.environ['YANG_DELETE_FILE']) > 0:
-        fd = open(os.environ['YANG_DELETE_FILE'], 'r+')
-        del_list = json.load(fd)
 
-        # Backup the contents just in case.
-        bfd = open(os.environ['YANG_DELETE_FILE'] + '.bak', 'w')
-        json.dump(del_list, bfd)
-        bfd.close()
+if __name__ == '__main__':
+    #find_args = []
 
-        # Zero out the main file.
-        fd.seek(0)
-        fd.truncate()
-        fd.close()
-except Exception as e:
-    print('Failed to read delete cache file {}'.format(e))
-    del_list = []
-
-if len(del_list) > 0:
+    parser = argparse.ArgumentParser(
+        description="Process changed modules in a git repo")
+    parser.add_argument('--time', type=str,
+                        help='Modified time argument to find(1)', required=False)
+    parser.add_argument('--config-path', type=str, default='/etc/yangcatalog/yangcatalog.conf',
+                        help='Set path to config file')
+    args = parser.parse_args()
+    config_path = args.config_path
+    config = configparser.ConfigParser()
+    config._interpolation = configparser.ExtendedInterpolation()
+    config.read(config_path)
+    log_directory = config.get('Directory-Section', 'logs')
+    LOGGER = get_logger('process_changed_mods', log_directory + '/process-changed-mods.log')
+    LOGGER.info('Initializing script loading config parameters')
+    dbHost = config.get('DB-Section', 'host')
+    dbName = config.get('DB-Section', 'name-search')
+    dbUser = config.get('DB-Section', 'user')
+    dbPass = config.get('DB-Section', 'password')
+    private_secret = config.get('General-Section', 'private-secret')
+    my_uri = config.get('General-Section', 'confd-ip')
+    yang_models = config.get('Directory-Section', 'yang_models_dir')
+    changes_cache_dir = config.get('Directory-Section', 'changes-cache')
+    delete_cache_dir = config.get('Directory-Section', 'delete-cache')
+    lock_file = config.get('Directory-Section', 'lock')
+    lock_file_cron = config.get('Directory-Section', 'lock-cron')
+    ytree_dir = config.get('Directory-Section', 'json-ytree')
+    if os.path.exists(lock_file) or os.path.exists(lock_file_cron):
+        # we can exist since this is run by cronjob every minute of every day
+        LOGGER.warning('Temporary lock file used by something else. Exiting script !!!')
+        sys.exit()
     try:
-        con = MySQLdb.connect(host= os.environ['DBHOST'],
-                               user= os.environ['DBUSER'],
-                               passwd= os.environ['DBPASSWD'],
-                               db= os.environ['DBNAME'])
-        cur = con.cursor(cursorclass=MySQLdb.cursors.DictCursor)
-        for mod in del_list:
-            mname = mod.split('@')[0]
-            mrev_org = mod.split('@')[1]
-            mrev = mrev_org.split('/')[0]
-            morg = '/'.join(mrev_org.split('/')[1:])
-            sql = 'DELETE FROM modules WHERE module=%(mod)s AND revision=%(rev)s AND organization=%(org)s'
-            try:
-                cur.execute(sql, {'mod': mname, 'rev': mrev,
-                                  'org': morg})
-                sql = 'DELETE FROM yindex WHERE module=$(mod)s AND revision=%(rev)s AND organization=%(org)s'
-                cur.execute(sql, {'mod': mname, 'rev': mrev,
-                                  'org': morg})
-            except MySQLdb.Error as e:
-                print('Failed to delete {} from the index: {}'.format(
-                    mod, e.args[0]))
-        con.commit()
-        con.close()
-    except MySQLdb.Error as e:
-        print("Error connecting to DB: {}".format(e.args[0]))
+        open(lock_file, 'w').close()
+        open(lock_file_cron, 'w').close()
+    except:
+        os.unlink(lock_file)
+        os.unlink(lock_file_cron)
+        LOGGER.error('Temporary lock file could not be created although it is not locked')
+        sys.exit()
 
-if len(mod_list) == 0:
-    print("No module to be processed. Exiting.")
-    sys.exit(0)
+    changes_cache = {}
+    delete_cache = []
+    if ((not os.path.exists(changes_cache_dir) or os.path.getsize(changes_cache_dir) <= 0)
+            and (not os.path.exists(delete_cache_dir) or os.path.getsize(delete_cache_dir) <= 0)):
+        LOGGER.info('No new modules are added or removed. Exiting script!!!')
+        os.unlink(lock_file)
+        os.unlink(lock_file_cron)
+        sys.exit()
+    else:
+        if os.path.exists(changes_cache_dir) and os.path.getsize(changes_cache_dir) > 0:
+            LOGGER.info('Loading changes cache')
+            f = open(changes_cache_dir, 'r+')
+            changes_cache = json.load(f)
 
-mod_args = []
-if type(mod_list) is list:
-    for mod_path in mod_list:
-        if not mod_path.startswith('/'):
-            mod_path = os.environ['YANGDIR'] + '/' + mod_path
-        mod_args.append(mod_path)
-else:
-    for m, mod_path in mod_list.items():
-        mparts = m.split('/')
-        if len(mparts) == 2:
-            mod_path += ':' + mparts[1]
-        if not mod_path.startswith('/'):
-            mod_path = os.environ['YANGDIR'] + '/' + mod_path
-        mod_args.append(mod_path)
+            # Backup the contents just in case.
+            bfd = open(changes_cache_dir + '.bak', 'w')
+            json.dump(changes_cache, bfd)
+            bfd.close()
 
-args = ['./build_yindex.sh'] + find_args + mod_args
+            f.truncate(0)
+            f.close()
 
-os.chdir(os.environ['TOOLS_DIR'])
-call(args)
+        if os.path.exists(delete_cache_dir) and os.path.getsize(delete_cache_dir) > 0:
+            LOGGER.info('Loading delete cache')
+            f = open(delete_cache_dir, 'r+')
+            delete_cache = json.load(f)
+
+            # Backup the contents just in case.
+            bfd = open(delete_cache_dir + '.bak', 'w')
+            json.dump(delete_cache, bfd)
+            bfd.close()
+
+            f.truncate(0)
+            f.close()
+        os.unlink(lock_file)
+
+
+
+    if len(delete_cache) > 0:
+        try:
+            con = MySQLdb.connect(host= dbHost,
+                                   user= dbUser,
+                                   passwd= dbPass,
+                                   db= dbName)
+            cur = con.cursor(cursorclass=MySQLdb.cursors.DictCursor)
+            for mod in delete_cache:
+                mname = mod.split('@')[0]
+                mrev_org = mod.split('@')[1]
+                mrev = mrev_org.split('/')[0]
+                morg = '/'.join(mrev_org.split('/')[1:])
+                sql = 'DELETE FROM modules WHERE module=%(mod)s AND revision=%(rev)s AND organization=%(org)s'
+                try:
+                    cur.execute(sql, {'mod': mname, 'rev': mrev,
+                                      'org': morg})
+                    sql = 'DELETE FROM yindex WHERE module=$(mod)s AND revision=%(rev)s AND organization=%(org)s'
+                    cur.execute(sql, {'mod': mname, 'rev': mrev,
+                                      'org': morg})
+                except MySQLdb.Error as e:
+                    LOGGER.error('Failed to delete {} from the index: {}'.format(
+                        mod, e.args[0]))
+            con.commit()
+            con.close()
+        except MySQLdb.Error as e:
+            LOGGER.error("Error connecting to DB: {}".format(e.args[0]))
+
+    if len(changes_cache) == 0:
+        LOGGER.info("No module to be processed. Exiting.")
+        os.unlink(lock_file_cron)
+        sys.exit(0)
+
+    LOGGER.info('Pulling latest yangModels/yang repository')
+    pull(yang_models)
+
+    mod_args = []
+    if type(changes_cache) is list:
+        for mod_path in changes_cache:
+            if not mod_path.startswith('/'):
+                mod_path = yang_models + '/' + mod_path
+            mod_args.append(mod_path)
+    else:
+        for m, mod_path in changes_cache.items():
+            mparts = m.split('/')
+            if len(mparts) == 2:
+                mod_path += ':' + mparts[1]
+            if not mod_path.startswith('/'):
+                mod_path = yang_models + '/' + mod_path
+            mod_args.append(mod_path)
+    build_yindex.build_yindex(private_secret, ytree_dir, mod_args, yang_models,
+                              dbHost, dbPass, dbName, dbUser, lock_file_cron,
+                              my_uri, LOGGER)
+    os.unlink(lock_file_cron)
+

@@ -26,7 +26,6 @@
 # SUCH DAMAGE.
 
 import MySQLdb
-import requests
 import re
 import os
 import sys
