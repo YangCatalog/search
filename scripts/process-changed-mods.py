@@ -207,7 +207,7 @@ if __name__ == '__main__':
             if not mod_path.startswith('/'):
                 mod_path = yang_models + '/' + mod_path
             mod_args.append(mod_path)
-    build_yindex.build_yindex(private_secret, ytree_dir, mod_args,
+    build_yindex.build_yindex(private_secret, ytree_dir, mod_args, yang_models,
                               dbHost, dbPass, dbName, dbUser, lock_file_cron,
                               my_uri, LOGGER)
     os.unlink(lock_file_cron)

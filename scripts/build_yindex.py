@@ -59,7 +59,7 @@ def __run_query(query, cur):
     cur.execute(query)
 
 
-def build_yindex(private_secret, ytree_dir, modules,
+def build_yindex(private_secret, ytree_dir, modules, yang_models,
                  dbHost, dbPass, dbName, dbUser, lock_file_cron,
                  my_uri, LOGGER):
     conn, cur = __create_connection(dbHost, dbPass, dbName, dbUser)
@@ -78,7 +78,7 @@ def build_yindex(private_secret, ytree_dir, modules,
                 org = m_parts[1]
             else:
                 m = m_parts[0]
-            ctx = create_context(os.path.abspath(m))
+            ctx = create_context(yang_models)
             with open(m, 'r') as f:
                  a = ctx.add_module(m, f.read())
             with open('temp.txt', 'w') as f:
