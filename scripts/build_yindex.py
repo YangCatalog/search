@@ -104,7 +104,7 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
                 revision = '1970-01-01'
             cur.execute("""DELETE FROM modules_temp WHERE module=%s AND revision=%s""", (name, revision,))
             cur.execute("""DELETE FROM yindex_temp WHERE module=%s AND revision=%s""", (name, revision,))
-            yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into').split('insert into')
+            yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into').split('insert into ')
             for yindex_insert_into in yindex_insert_intos:
                 if yindex_insert_into.startswith('modules') or yindex_insert_into.startswith('yindex'):
                     yindex_insert_into = 'insert into {}'.format(yindex_insert_into)
