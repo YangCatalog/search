@@ -11,6 +11,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import re
 
 __author__ = "Miroslav Kovac and Joe Clarke"
 __copyright__ = "Copyright 2018 Cisco and its affiliates"
@@ -61,7 +62,7 @@ def __run_query(query, cur):
 
 def build_yindex(private_secret, ytree_dir, modules, yang_models,
                  dbHost, dbPass, dbName, dbUser, lock_file_cron,
-                 my_uri, LOGGER):
+                 my_uri, LOGGER, save_file_dir):
     conn, cur = __create_connection(dbHost, dbPass, dbName, dbUser)
     try:
         cur.execute("""create table yindex_temp as select * from yindex""")
@@ -78,7 +79,7 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
                 org = m_parts[1]
             else:
                 m = m_parts[0]
-            ctx = create_context(yang_models)
+            ctx = create_context('{}:{}'.format(yang_models, save_file_dir))
             with open(m, 'r') as f:
                  a = ctx.add_module(m, f.read())
             with open('temp.txt', 'w') as f:
@@ -104,13 +105,13 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
                 revision = '1970-01-01'
             cur.execute("""DELETE FROM modules_temp WHERE module=%s AND revision=%s""", (name, revision,))
             cur.execute("""DELETE FROM yindex_temp WHERE module=%s AND revision=%s""", (name, revision,))
-            yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into').split('insert into ')
+            yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into')
+            yindex_insert_intos = re.findall(r'((insert into).*?(\);[\r\n]+))', yindex_insert_intos)
             for yindex_insert_into in yindex_insert_intos:
-                if yindex_insert_into.startswith('modules') or yindex_insert_into.startswith('yindex'):
-                    yindex_insert_into = 'insert into {}'.format(yindex_insert_into)
-                    yindex_insert_into = yindex_insert_into.replace('insert into modules', 'insert into modules_temp')
-                    yindex_insert_into = yindex_insert_into.replace('insert into yindex', 'insert into yindex_temp')
-                    cur.execute(yindex_insert_into)
+                insert = yindex_insert_into[0]
+                insert = insert.replace('insert into modules', 'insert into modules_temp')
+                insert = insert.replace('insert into yindex', 'insert into yindex_temp')
+                cur.execute(insert)
             cur.execute("""UPDATE modules_temp SET file_path=%s WHERE module=%s AND revision=%s""", (m, name, revision,))
             if org is not None:
                 cur.execute("""UPDATE modules_temp SET organization=%s WHERE module=%s AND revision=%s""", (org, name, revision,))
