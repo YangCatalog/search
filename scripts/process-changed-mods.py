@@ -107,6 +107,7 @@ if __name__ == '__main__':
     lock_file = config.get('Directory-Section', 'lock')
     lock_file_cron = config.get('Directory-Section', 'lock-cron')
     ytree_dir = config.get('Directory-Section', 'json-ytree')
+    save_file_dir = config.get('Directory-Section', 'save-file-dir')
     if os.path.exists(lock_file) or os.path.exists(lock_file_cron):
         # we can exist since this is run by cronjob every minute of every day
         LOGGER.warning('Temporary lock file used by something else. Exiting script !!!')
@@ -209,6 +210,6 @@ if __name__ == '__main__':
             mod_args.append(mod_path)
     build_yindex.build_yindex(private_secret, ytree_dir, mod_args, yang_models,
                               dbHost, dbPass, dbName, dbUser, lock_file_cron,
-                              my_uri, LOGGER)
+                              my_uri, LOGGER, save_file_dir)
     os.unlink(lock_file_cron)
 
