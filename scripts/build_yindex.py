@@ -82,6 +82,9 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
             ctx = create_context('{}:{}'.format(yang_models, save_file_dir))
             with open(m, 'r') as f:
                  a = ctx.add_module(m, f.read())
+            if a is None:
+                LOGGER.warning('Unable to pyang parse module {} skipping this module'.format(module))
+                continue
             with open('temp.txt', 'w') as f:
                 ctx.opts.print_revision = True
                 emit_name(ctx, [a], f)
