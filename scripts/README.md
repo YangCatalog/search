@@ -4,10 +4,6 @@ All those scripts maintain the MySQL tables `modules` and `yindex`.
 
 A cronjob is executed every minute and calls: `process-changed-mods.py --time -1`
 
-## yindex.env
-
-Sets the value of several environment variables.
-
 ## process-changed-mods.py
 
 Take on argument: the number of minutes to search for new modules.

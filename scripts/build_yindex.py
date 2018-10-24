@@ -111,7 +111,7 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
             cur.execute("""DELETE FROM modules_temp WHERE module=%s AND revision=%s""", (name, revision,))
             cur.execute("""DELETE FROM yindex_temp WHERE module=%s AND revision=%s""", (name, revision,))
             yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into')
-            // TODO line below does not handle multi-line insert into statements
+            # TODO line below does not handle multi-line insert into statements
             yindex_insert_intos = re.findall(r'((insert into).*?(\);[\r\n]+))', yindex_insert_intos, re.MULTILINE)
             for yindex_insert_into in yindex_insert_intos:
                 insert = yindex_insert_into[0]
