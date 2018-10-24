@@ -65,8 +65,10 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
                  my_uri, LOGGER, save_file_dir):
     conn, cur = __create_connection(dbHost, dbPass, dbName, dbUser)
     try:
-        cur.execute("""create table yindex_temp as select * from yindex""")
-        cur.execute("""create table modules_temp as select * from modules""")
+        cur.execute("""create table yindex_temp like yindex""")
+        cur.execute("""create table modules_temp like modules""")
+        cur.execute("""insert yindex_temp select * from yindex""")
+        cur.execute("""insert modules_temp select * from modules""")
         x = 0
         for module in modules:
             x += 1
@@ -109,7 +111,8 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
             cur.execute("""DELETE FROM modules_temp WHERE module=%s AND revision=%s""", (name, revision,))
             cur.execute("""DELETE FROM yindex_temp WHERE module=%s AND revision=%s""", (name, revision,))
             yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into')
-            yindex_insert_intos = re.findall(r'((insert into).*?(\);[\r\n]+))', yindex_insert_intos)
+            // TODO line below does not handle multi-line insert into statements
+            yindex_insert_intos = re.findall(r'((insert into).*?(\);[\r\n]+))', yindex_insert_intos, re.MULTILINE)
             for yindex_insert_into in yindex_insert_intos:
                 insert = yindex_insert_into[0]
                 insert = insert.replace('insert into modules', 'insert into modules_temp')
