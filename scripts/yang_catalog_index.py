@@ -1,0 +1,1 @@
+/usr/local/lib/python3.6/dist-packages/pyang/plugins/yang_catalog_index.py
