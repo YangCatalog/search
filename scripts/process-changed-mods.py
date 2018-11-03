@@ -199,6 +199,7 @@ if __name__ == '__main__':
 
     LOGGER.info('Pulling latest yangModels/yang repository')
     pull(yang_models)
+    LOGGER.info('Latest yangModels/yang repository pulled')
 
     mod_args = []
     if type(changes_cache) is list:
@@ -218,4 +219,5 @@ if __name__ == '__main__':
                               dbHost, dbPass, dbName, dbUser, lock_file_cron,
                               my_uri, LOGGER, save_file_dir)
     os.unlink(lock_file_cron)
+
 

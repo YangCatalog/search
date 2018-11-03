@@ -13,6 +13,8 @@
 # limitations under the License.
 import re
 
+from scripts.listWriter import ListWriter
+
 __author__ = "Miroslav Kovac and Joe Clarke"
 __copyright__ = "Copyright 2018 Cisco and its affiliates"
 __license__ = "Apache License, Version 2.0"
@@ -20,7 +22,6 @@ __email__ = "miroslav.kovac@pantheon.tech, jclarke@cisco.com"
 
 import os
 import subprocess
-
 import MySQLdb
 import MySQLdb.cursors
 from pyang.plugins.json_tree import emit_tree
@@ -65,10 +66,12 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
                  my_uri, LOGGER, save_file_dir):
     conn, cur = __create_connection(dbHost, dbPass, dbName, dbUser)
     try:
-        cur.execute("""create table yindex_temp like yindex""")
-        cur.execute("""create table modules_temp like modules""")
-        cur.execute("""insert yindex_temp select * from yindex""")
-        cur.execute("""insert modules_temp select * from modules""")
+        LOGGER.info('Creating temporary tables')
+        cur.execute("CREATE TABLE yindex_temp LIKE yindex")
+        cur.execute("CREATE TABLE modules_temp LIKE modules")
+        cur.execute("INSERT yindex_temp SELECT * FROM yindex")
+        cur.execute("INSERT modules_temp SELECT * FROM modules")
+        LOGGER.info('Temporary tables created')
         x = 0
         for module in modules:
             x += 1
@@ -92,13 +95,12 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
                 emit_name(ctx, [a], f)
             with open('temp.txt', 'r') as f:
                 name_revision = f.read().strip()
-            with open('temp.txt', 'w') as f:
-                ctx.opts.yang_index_make_module_table = True
-                ctx.opts.yang_index_no_schema = True
-                plugin = IndexerPlugin()
-                plugin.emit(ctx,[a], f)
-            with open('temp.txt', 'r') as f:
-                yindex = f.read().strip()
+            outputList = ListWriter()
+            ctx.opts.yang_index_make_module_table = True
+            ctx.opts.yang_index_no_schema = True
+            plugin = IndexerPlugin()
+            plugin.emit(ctx,[a], outputList)
+
             os.unlink('temp.txt')
 
             name_revision = name_revision.split('@')
@@ -108,42 +110,47 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
             else:
                 name = name_revision[0]
                 revision = '1970-01-01'
-            cur.execute("""DELETE FROM modules_temp WHERE module=%s AND revision=%s""", (name, revision,))
-            cur.execute("""DELETE FROM yindex_temp WHERE module=%s AND revision=%s""", (name, revision,))
-            yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into')
+            cur.execute("DELETE FROM modules_temp WHERE module=%s AND revision=%s", (name, revision,))
+            cur.execute("DELETE FROM yindex_temp WHERE module=%s AND revision=%s", (name, revision,))
+            #yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into')
             # TODO line below does not handle multi-line insert into statements
-            yindex_insert_intos = re.findall(r'((insert into).*?(\);[\r\n]+))', yindex_insert_intos, re.MULTILINE)
-            for yindex_insert_into in yindex_insert_intos:
-                insert = yindex_insert_into[0]
-                insert = insert.replace('insert into modules', 'insert into modules_temp')
-                insert = insert.replace('insert into yindex', 'insert into yindex_temp')
+            #yindex_insert_intos = re.findall(r'((insert into).*?(\);[\r\n]+))', yindex_insert_intos, re.MULTILINE)
+            for yindex_insert_into in outputList.getOutputList():
+                insert = yindex_insert_into.replace('INSERT INTO', 'insert into')
+                insert = insert.replace('insert into modules', 'INSERT INTO modules_temp')
+                insert = insert.replace('insert into yindex', 'INSERT INTO yindex_temp')
+                LOGGER.info('Executing: ' + insert)
                 cur.execute(insert)
-            cur.execute("""UPDATE modules_temp SET file_path=%s WHERE module=%s AND revision=%s""", (m, name, revision,))
+            cur.execute("UPDATE modules_temp SET file_path=%s WHERE module=%s AND revision=%s", (m, name, revision,))
             if org is not None:
-                cur.execute("""UPDATE modules_temp SET organization=%s WHERE module=%s AND revision=%s""", (org, name, revision,))
-                cur.execute("""UPDATE yindex_temp SET organization=%s WHERE module=%s AND revision=%s""", (org, name, revision,))
+                cur.execute("UPDATE modules_temp SET organization=%s WHERE module=%s AND revision=%s", (org, name, revision,))
+                cur.execute("UPDATE yindex_temp SET organization=%s WHERE module=%s AND revision=%s", (org, name, revision,))
 
             with open('{}/{}@{}'.format(ytree_dir, name, revision), 'w') as f:
                 emit_tree([a], f, ctx)
         add_data(conn, cur, private_secret, my_uri, LOGGER, lock_file_cron)
         try:
+            LOGGER.info('Commiting changes into SQL database') 
             conn.commit()
         except Exception as e:
             # Rollback in case there is any error
-            cur.execute("""drop table yindex_temp""")
-            cur.execute("""drop table modules_temp""")
+            cur.execute("DROP TABLE yindex_temp")
+            cur.execute("DROP TABLE modules_temp")
             os.unlink(lock_file_cron)
             conn.rollback()
+            LOGGER.info('Failed to commit the changes')
             raise e
-        cur.execute("""rename table modules to modules_remove""")
-        cur.execute("""rename table modules_temp to modules""")
-        cur.execute("""rename table yindex to yindex_remove""")
-        cur.execute("""rename table yindex_temp to yindex""")
-        cur.execute("""drop table yindex_remove""")
-        cur.execute("""drop table modules_remove""")
+        LOGGER.info('Changes committed') 
+        cur.execute("RENAME TABLE modules TO modules_remove")
+        cur.execute("RENAME TABLE modules_temp TO modules")
+        cur.execute("RENAME TABLE yindex TO yindex_remove")
+        cur.execute("RENAME TABLE yindex_temp TO yindex")
+        cur.execute("DROP TABLE yindex_remove")
+        cur.execute("DROP TABLE modules_remove")
     except Exception as e:
-        cur.execute("""drop table yindex_temp""")
-        cur.execute("""drop table modules_temp""")
+        cur.execute("DROP TABLE yindex_temp")
+        cur.execute("DROP TABLE modules_temp")
         os.unlink(lock_file_cron)
         conn.rollback()
         raise e
+
