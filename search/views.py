@@ -1,13 +1,13 @@
 # Copyright 2018 Cisco and its afficiliates
-# 
+#
 # Authors Joe Clarke jclarke@cisco.com and Tomas Markovic <Tomas.Markovic@pantheon.tech> for the Python version
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,
 #     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -172,7 +172,7 @@ def show_node(request, name='', path='', revision=''):
     contain module argument.
     :param path: Path for node.
     :param revision: revision for yang module, if specified.
-    :return: returns context for show_node.html 
+    :return: returns context for show_node.html
     """
     alerts = []
     context = dict()
@@ -188,7 +188,7 @@ def show_node(request, name='', path='', revision=''):
         context['properties'] = json.loads(result['properties'])
     except:
         alerts.append('Module and path must be specified')
-    context['alerts'] = alerts 
+    context['alerts'] = alerts
     return render(request, 'search/show_node.html', context)
 
 
@@ -213,11 +213,11 @@ def module_details(request, module=''):
         module = module.replace('.yin', '')
         rev_org = get_rev_org('yang-catalog', 1, alerts)
         revision = rev_org['rev']
-        
+
         mod = yindex.objects.values('argument', 'description', 'properties') \
             .filter(module='yang-catalog', revision=revision) \
             .order_by('argument', 'module', 'revision')
-        
+
         rv_org = get_rev_org(module, 1, alerts)
         module = module.split('@')[0]
         rv = rv_org['rev']
@@ -252,10 +252,10 @@ def module_details(request, module=''):
                                                 description = echild['description']['value'].replace('\n', "<br/>\r\n")
                                                 help_text += "<br/>\r\n<br/>\r\n{} : {}".format(child['enum']['value'],
                                                                                                 description)
-    
+
                         break
                 module_details['{}_ht'.format(key)] = help_text
-    
+
         context['module_details'] = module_details
         context['keys'] = __module
         context['module'] = module
@@ -341,7 +341,7 @@ def yangsuite(request, module):
         module = module.split('@')[0]
         mod_obj = moduleFactory(module, rev_org['rev'], rev_org['org'], False, True)
         obj = fetch(mod_obj)
-            
+
         if obj.get('ys_url') is not None:
             url = obj['ys_url']
 
@@ -377,7 +377,7 @@ def metadata_update(request):
     """
     Provides hyperlink for database update, on which we send requests.
     :param request: Array with arguments from rest request.
-    :return: calls scripts for database update and file generation 
+    :return: calls scripts for database update and file generation
     """
     config_path = '/etc/yangcatalog/yangcatalog.conf'
     config = configparser.ConfigParser()
@@ -517,7 +517,7 @@ def yang_tree(request, module = ''):
 
 def impact_analysis(request, module=''):
     """
-    View for impact_analysis.html 
+    View for impact_analysis.html
     :param request: Array with arguments from rest request.
     :param module: Module for which we are generating impact_analysis, this arg is only used
     when we are accessing webpage from link in search. Otherwise request arguments are used.
@@ -561,7 +561,7 @@ def impact_analysis(request, module=''):
                 recurse = int(request.GET['recursion'])
             except:
                 recurse = 0
-                
+
         if 'show_rfcs' not in request.GET and request.GET != {}:
             show_rfcs = False
         if 'show_subm' not in request.GET and request.GET != {}:
@@ -579,7 +579,7 @@ def impact_analysis(request, module=''):
                 for mod_obj in mod_objs:
                     if mod_obj.get('name') is not None:
                         m = mod_obj['name']
-                        
+
                         if mod_obj.get('maturity-level') != 'adopted' and mod_obj.get('maturity-level') != 'ratified':
                             continue
                         good_mods.append(m)
@@ -612,7 +612,7 @@ def impact_analysis(request, module=''):
             tbottlenecks.append(pair[0])
             found_bottleneck = True
             curr_count = pair[1]
-    
+
         for bn in tbottlenecks:
             found_dep = False
             for edge in edges:
@@ -625,7 +625,7 @@ def impact_analysis(request, module=''):
                         found_dep = True
             if not found_dep:
                 bottlenecks.append("node#mod_{}".format(bn))
-    
+
         num_legend_cols = math.ceil(len(found_orgs) / 6)
         if num_legend_cols < 1:
             num_legend_cols = 1
@@ -672,7 +672,7 @@ def search(post_json, search_term):
     Searches for results of the main yang-search webpage.
     :param post_json: Json which we are sending to api
     :param search_term: Term for which we are searching
-    :return: Search results. 
+    :return: Search results.
     """
     if search_term != '':
 
@@ -984,7 +984,7 @@ def get_parent(mod_obj):
     try:
         bt = mod_obj.get('belongs-to')
         if not bt:
-            return mod_obj.get('name') 
+            return mod_obj.get('name')
         return bt
     except Exception as e:
         return mod_obj.get('name')
@@ -993,7 +993,7 @@ def get_parent(mod_obj):
 def is_submod(mod_obj):
     """
     Find out whether module has a parent or not.
-    :param mod_obj: module object 
+    :param mod_obj: module object
     :return: module status
     """
     try:
@@ -1011,7 +1011,7 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
     Builds graph for impact_analysis. takes module name, and mod_obj, which has all of the modules
     dependents and dependencies.
     Goes through both dependents and dependencies and adds them to output if they are
-    eligible for 
+    eligible for
     :param module: module name
     :param mod_obj: module object
     :param orgs: organizations array
@@ -1252,21 +1252,21 @@ def color_gen(org):
         g = f
         b = 0
     elif result == 1:
-        r = q
-        g = 1
-        b = 0
-    elif result == 2:
-        r = 0
-        g = 1
-        b = f
-    elif result == 3:
         r = 0
         g = q
         b = 1
-    elif result == 4:
+    elif result == 2:
+        r = q
+        g = 1
+        b = 0
+    elif result == 3:
         r = f
         g = 0
         b = 1
+    elif result == 4:
+        r = 0
+        g = 1
+        b = f
     elif result == 5:
         r = 1
         g = 0
