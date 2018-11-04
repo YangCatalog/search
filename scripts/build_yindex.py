@@ -56,10 +56,8 @@ def __run_pyang_commands(commands, output_only=True, decode=True):
     else:
         return stdout, stderr
 
-
 def __run_query(query, cur):
     cur.execute(query)
-
 
 def build_yindex(private_secret, ytree_dir, modules, yang_models,
                  dbHost, dbPass, dbName, dbUser, lock_file_cron,
@@ -67,15 +65,21 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
     conn, cur = __create_connection(dbHost, dbPass, dbName, dbUser)
     try:
         LOGGER.info('Creating temporary tables')
+        cur.execute("DROP TABLE IF EXISTS yindex_temp")
+        cur.execute("DROP TABLE IF EXISTS modules_temp")
         cur.execute("CREATE TABLE yindex_temp LIKE yindex")
         cur.execute("CREATE TABLE modules_temp LIKE modules")
+        cur.execute("DROP INDEX module ON yindex_temp")
+        cur.execute("DROP INDEX module_idx ON yindex_temp")
+        LOGGER.info('Temporary tables created')
+        # Comment out the next two lines for a clean start
         cur.execute("INSERT yindex_temp SELECT * FROM yindex")
         cur.execute("INSERT modules_temp SELECT * FROM modules")
-        LOGGER.info('Temporary tables created')
+        LOGGER.info('Temporary tables filled')
         x = 0
         for module in modules:
             x += 1
-            LOGGER.info('yindex on module {}. module {} out of {}'.format(module.split('/')[-1], x, len(modules)))
+            LOGGER.info('build_yindex() on module {}. module {} out of {}'.format(module.split('/')[-1], x, len(modules)))
             # split to module with path and organization
             m_parts = module.split(":")
             org = None
@@ -95,14 +99,7 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
                 emit_name(ctx, [a], f)
             with open('temp.txt', 'r') as f:
                 name_revision = f.read().strip()
-            outputList = ListWriter()
-            ctx.opts.yang_index_make_module_table = True
-            ctx.opts.yang_index_no_schema = True
-            plugin = IndexerPlugin()
-            plugin.emit(ctx,[a], outputList)
-
             os.unlink('temp.txt')
-
             name_revision = name_revision.split('@')
             if len(name_revision) > 1:
                 name = name_revision[0]
@@ -110,17 +107,23 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
             else:
                 name = name_revision[0]
                 revision = '1970-01-01'
+
+            outputList = ListWriter()
+            ctx.opts.yang_index_make_module_table = True
+            ctx.opts.yang_index_no_schema = True
+            plugin = IndexerPlugin()
+            # Equivalent to pyang -f yang-catalog-index --yang-index-make-module-table
+            plugin.emit(ctx,[a], outputList)
+
             cur.execute("DELETE FROM modules_temp WHERE module=%s AND revision=%s", (name, revision,))
             cur.execute("DELETE FROM yindex_temp WHERE module=%s AND revision=%s", (name, revision,))
-            #yindex_insert_intos = yindex.replace('INSERT INTO', 'insert into')
-            # TODO line below does not handle multi-line insert into statements
-            #yindex_insert_intos = re.findall(r'((insert into).*?(\);[\r\n]+))', yindex_insert_intos, re.MULTILINE)
             for yindex_insert_into in outputList.getOutputList():
                 insert = yindex_insert_into.replace('INSERT INTO', 'insert into')
                 insert = insert.replace('insert into modules', 'INSERT INTO modules_temp')
                 insert = insert.replace('insert into yindex', 'INSERT INTO yindex_temp')
-                LOGGER.info('Executing: ' + insert)
+                #LOGGER.info('Executing: ' + insert[:40] + "...(" + str(len(insert)) + ")")
                 cur.execute(insert)
+                #LOGGER.info('INSERT INTO done')
             cur.execute("UPDATE modules_temp SET file_path=%s WHERE module=%s AND revision=%s", (m, name, revision,))
             if org is not None:
                 cur.execute("UPDATE modules_temp SET organization=%s WHERE module=%s AND revision=%s", (org, name, revision,))
@@ -141,10 +144,14 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
             LOGGER.info('Failed to commit the changes')
             raise e
         LOGGER.info('Changes committed') 
+        cur.execute("CREATE FULLTEXT INDEX module ON yindex_temp(module, argument, description)")
+        cur.execute("CREATE INDEX module_idx ON yindex_temp(module)")
+        LOGGER.info('Tables re-indexed') 
         cur.execute("RENAME TABLE modules TO modules_remove")
         cur.execute("RENAME TABLE modules_temp TO modules")
         cur.execute("RENAME TABLE yindex TO yindex_remove")
         cur.execute("RENAME TABLE yindex_temp TO yindex")
+        LOGGER.info('Tables renamed') 
         cur.execute("DROP TABLE yindex_remove")
         cur.execute("DROP TABLE modules_remove")
     except Exception as e:

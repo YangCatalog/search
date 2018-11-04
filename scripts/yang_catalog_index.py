@@ -1,3 +1,15 @@
+#
+# Licensed under the Apache Licparse_allense, Version 2.0 (the "License");
+# you may not use this file except in compliance with the License.
+# You may obtain a copy of the License at
+#
+#     http://www.apache.org/licenses/LICENSE-2.0
+#
+# Unless required by applicable law or agreed to in writing, software
+# distributed under the License is distributed on an "AS IS" BASIS,
+# WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
+# See the License for the specific language governing permissions and
+# limitations under the License.
 
 from pyang import plugin, statements
 import json
@@ -5,6 +17,7 @@ import optparse
 import re
 
 _yang_catalog_index_fd = None
+_yang_catalog_index_values = []
 
 NS_MAP = {
     "http://cisco.com/ns/yang/": "cisco",
@@ -29,11 +42,11 @@ class IndexerPlugin(plugin.PyangPlugin):
             optparse.make_option("--yang-index-no-schema",
                                  dest="yang_index_no_schema",
                                  action="store_true",
-                                 help="""Do not include SQLite schema in output"""),
+                                 help="""Do not include SQL schema in output"""),
             optparse.make_option("--yang-index-schema-only",
                                  dest="yang_index_schema_only",
                                  action="store_true",
-                                 help="""Only include the SQLite schema in output"""),
+                                 help="""Only include the SQL schema in output"""),
             optparse.make_option("--yang-index-make-module-table",
                                  dest="yang_index_make_module_table",
                                  action="store_true",
@@ -54,13 +67,15 @@ class IndexerPlugin(plugin.PyangPlugin):
 
 
 def emit_index(ctx, modules, fd):
+    global  _yang_catalog_index_values
     if not ctx.opts.yang_index_no_schema:
         fd.write(
-            "create table yindex(module, revision, organization, path, statement, argument, description, properties);\n")
+            "CREATE TABLE yindex(module, revision, organization, path, statement, argument, description, properties);\n")
         if ctx.opts.yang_index_make_module_table:
             fd.write(
-                "create table modules(module, revision, yang_version, belongs_to, namespace, prefix, organization, maturity, compile_status, document, file_path);\n")
+                "CREATE TABLE modules(module, revision, yang_version, belongs_to, namespace, prefix, organization, maturity, compile_status, document, file_path);\n")
     if not ctx.opts.yang_index_schema_only:
+        _yang_catalog_index_values = [] ;
         mods = []
         for module in modules:
             if module in mods:
@@ -88,6 +103,8 @@ def emit_index(ctx, modules, fd):
                 index_printer(nch)
             for child in module.i_children:
                 statements.iterate_i_children(child, index_printer)
+        if len(_yang_catalog_index_values) > 0:
+            _yang_catalog_index_fd.write("INSERT INTO yindex (module, revision, organization, path, statement, argument, description, properties) VALUES " + ', '.join(_yang_catalog_index_values) + ';\n')
 
 
 def index_mprinter(ctx, module):
@@ -197,7 +214,7 @@ def index_get_other(stmt):
 
 
 def index_printer(stmt):
-    global _yang_catalog_index_fd
+    global _yang_catalog_index_values
 
     if stmt.arg is None:
         return
@@ -248,6 +265,8 @@ def index_printer(stmt):
                 a = index_escape_json(a)
             subs.append(
                 {k: {'value': a, 'has_children': has_children, 'children': []}})
-# !! Special care to be taken for quoting
-    _yang_catalog_index_fd.write("INSERT INTO yindex (module, revision, organization, path, statement, argument, description, properties) VALUES ('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s');" % (
-        module.arg, revision, organization, path, skey, stmt.arg, dstr, json.dumps(subs)) + "\n")
+    sql_value = "('%s', '%s', '%s', '%s', '%s', '%s', '%s', '%s')" % (module.arg, revision, organization, path, skey, stmt.arg, dstr, json.dumps(subs))
+    if len(_yang_catalog_index_values) > 100:
+        _yang_catalog_index_fd.write("INSERT INTO yindex (module, revision, organization, path, statement, argument, description, properties) VALUES " + ', '.join(_yang_catalog_index_values) + ';\n')
+        _yang_catalog_index_values = []
+    _yang_catalog_index_values.append(sql_value)
