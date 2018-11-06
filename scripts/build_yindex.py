@@ -65,8 +65,6 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
     conn, cur = __create_connection(dbHost, dbPass, dbName, dbUser)
     try:
         LOGGER.info('Creating temporary tables')
-        cur.execute("DROP TABLE IF EXISTS yindex_temp")
-        cur.execute("DROP TABLE IF EXISTS modules_temp")
         cur.execute("CREATE TABLE yindex_temp LIKE yindex")
         cur.execute("CREATE TABLE modules_temp LIKE modules")
         cur.execute("DROP INDEX module ON yindex_temp")
@@ -145,7 +143,7 @@ def build_yindex(private_secret, ytree_dir, modules, yang_models,
             raise e
         LOGGER.info('Changes committed') 
         cur.execute("CREATE FULLTEXT INDEX module ON yindex_temp(module, argument, description)")
-        cur.execute("CREATE INDEX module_idx ON yindex_temp(module)")
+        cur.execute("CREATE INDEX module_idx ON yindex_temp(module, revision)")
         LOGGER.info('Tables re-indexed') 
         cur.execute("RENAME TABLE modules TO modules_remove")
         cur.execute("RENAME TABLE modules_temp TO modules")
