@@ -196,7 +196,7 @@ def module_details(request, module=''):
     """
     View for module_details, which provides context for module_details.html
     Takes request args, and makes requests to local database, and api.
-    :param request: Array with arguments from webpage data submition.
+    :param request: Array with arguments from webpage data submission.
     :param module: Takes first argument from url if request does not
     contain module argument.
     :return: returns context for module_details.html
@@ -595,6 +595,7 @@ def impact_analysis(request, module=''):
                 else:
                     m = m.replace('.yang', '')
                     m = m.replace('.yin', '')
+                    m = m.strip()
                     mod_obj = get_rev_org_obj(m, alerts)
                     m = m.split('@')[0]
                     good_mods.append(m)

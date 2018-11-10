@@ -22,6 +22,19 @@ Ensure that your webserver:
 * will serve https://example.org/yang-search/static to the `static/*` files
 * will serve https://example.org/yang-search/ via the port of UWSGI
 
+For example:
+```
+       location /yang-search/static {
+            alias /var/www/html/yang-search/static;
+        }
+
+        location /yang-search/ {
+            include uwsgi_params;
+            uwsgi_pass unix:/var/run/yang/yang-search.sock ;
+            uwsgi_read_timeout 300;
+        }
+```
+
 **UWSGI**
 
 UWSGI can be run as an indepedant process or via the `emperor`mechanism.
