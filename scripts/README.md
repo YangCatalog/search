@@ -26,12 +26,10 @@ Build the list of all modules modified since the --time (else for all modules), 
 
 Then, it calls `process-catalog-file.py` for all catalogs (from environment variable YANG_CATALOG_FILES set in yindex.env).
 
-**NOTE**: this script has very poor performance as it forks several times per module for pyang analysis, for MySQL statements, ... to be rewritten completely in Python and calling natively the pyang & MySQL bindings.
-
 ## process-catalog-file.py
 
 ## add-catalog-data.py
 
 ## yang_catalog_index.py
 
-This is a PYANG plugin to generate the SQL statements YANG
+This is a PYANG plugin to generate the SQL statements for Yang Search database. It must be installed in the PYANG plugin directory.
