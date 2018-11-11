@@ -30,6 +30,6 @@ Then, it calls `process-catalog-file.py` for all catalogs (from environment vari
 
 ## add-catalog-data.py
 
-## yang_catalog_index.py
+## pyang_plugin directory
 
-This is a PYANG plugin to generate the SQL statements for Yang Search database. It must be installed in the PYANG plugin directory.
+This directory contains all PYANG plugins used by YangSearch.
