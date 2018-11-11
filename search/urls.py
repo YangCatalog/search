@@ -35,5 +35,6 @@ urlpatterns = [
     path(r'yangsuite/<module>', views.yangsuite, name='yangsuite'),
     path(r'module_details/', views.module_details, name='module_details'),
     path(r'yang_tree/', views.yang_tree, name='yang_tree'),
-    path(r'impact_analysis/', views.impact_analysis, name='impact_analysis')
+    path(r'impact_analysis/', views.impact_analysis, name='impact_analysis'),
+    path(r'impact_analysis_php/', views.impact_analysis_php, name='impact_analysis_php')
 ]

@@ -18,7 +18,10 @@ from django.shortcuts import render
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse
 from django.shortcuts import redirect
+from django.urls import reverse
+from urllib.parse import urlencode
 from Crypto.Hash import SHA, HMAC
+from . import views
 import configparser
 import math
 import requests
@@ -514,11 +517,10 @@ def yang_tree(request, module = ''):
     context['maturity'] = maturity
     return render(request, 'search/yang_tree.html', context)
 
-
 def impact_analysis(request, module=''):
     """
     View for impact_analysis.html
-    :param request: Array with arguments from rest request.
+    :param request: Array with arguments from REST request.
     :param module: Module for which we are generating impact_analysis, this arg is only used
     when we are accessing webpage from link in search. Otherwise request arguments are used.
     :return: Context for generating the impact_analysis webpage.
@@ -666,6 +668,49 @@ def impact_analysis(request, module=''):
         logger.error(e)
         return render(request, 'search/impact_analysis.html', context)
     return render(request, 'search/impact_analysis.html', context)
+
+
+def impact_analysis_php(request):
+    """
+    Try to be compatible with the old YangSearch URL:
+    https://www.yangcatalog.org/yang-search/impact_analysis.php?modules[]=ietf-lisp@2018-11-04.yang&modules[]=ietf-lisp-mapserver@2018-06-29.yang&modules[]=ietf-lisp-address-types@2018-06-29.yang&modules[]=ietf-lisp-etr@2018-09-06.yang&modules[]=ietf-lisp-itr@2018-06-29.yang&modules[]=ietf-lisp-mapresolver@2018-06-29.yang&recurse=0&rfcs=1&show_subm=1&show_dir=both
+
+    The webserver (NGINX) will do the rewrite of /yang-search/impact_analysis.php? into /yang-search/impact_analysis.php/? to allow django processing
+    :param request: Array with arguments from REST request.
+    :return: Context to redirect to the new URL scheme
+    """
+
+    print('EVY processing old .PHP request')
+    # Get the full URL for impact_analysis
+#    base_url = reverse('impact_analysis') 
+#    base_url = reverse(views.impact_analysis)
+#    base_url = reverse(impact_analysis)
+    base_url = 'https://yangcatalog.org/yang-search/impact_analysis/'
+    # More complex now... let's translate the query_string
+    query_dict = dict()
+    modtags = []
+    for m in request.GET.getlist('modules[]'):
+        modtags.append(m)
+    if len(modtags) > 0:
+        query_dict['modtags'] = ','.join(modtags)
+    orgtags = []
+    for m in request.GET.getlist('orgs[]'):
+        orgtags.append(m)
+    if len(orgtags) > 0:
+        query_dict['orgtags'] = ','.join(orgtags)
+    if 'recurse' in request.GET:
+        query_dict['recursion'] = request.GET['recurse']
+    if 'rfcs' in request.GET and request.GET['rfcs'] != 0:
+        query_dict['show_rfcs'] = 1
+    if 'show_subm' in request.GET and request.GET['show_subm'] != 0:
+        query_dict['show_subm'] = 1
+    if 'show_dir' in request.GET:
+        query_dict['show_dir'] = request.GET['show_dir']
+    query_string = urlencode(query_dict)
+    # Construct the URL with the query string
+    url = '{}?{}'.format(base_url, query_string)
+    print('URL = ' + url)
+    return redirect(url, permanent=False)
 
 
 def search(post_json, search_term):
