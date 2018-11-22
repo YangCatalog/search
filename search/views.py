@@ -466,7 +466,7 @@ def yang_tree(request, module = ''):
             module = ''
         else:
             title = "YANG Tree for Module: '{}'".format(module)
-            mod_obj = get_rev_org(module, 1, alerts)
+            mod_obj = get_rev_org_obj(module, 1, alerts)
 
             modn = module.split('@', 1)[0]
             module = "{}@{}".format(modn, mod_obj['rev'])
@@ -680,9 +680,8 @@ def impact_analysis_php(request):
     :return: Context to redirect to the new URL scheme
     """
 
-    print('EVY processing old .PHP request')
     # Get the full URL for impact_analysis
-#    base_url = reverse('impact_analysis') 
+#    base_url = reverse('impact_analysis')
 #    base_url = reverse(views.impact_analysis)
 #    base_url = reverse(impact_analysis)
     base_url = 'https://yangcatalog.org/yang-search/impact_analysis/'
@@ -698,6 +697,8 @@ def impact_analysis_php(request):
         orgtags.append(m)
     if len(orgtags) > 0:
         query_dict['orgtags'] = ','.join(orgtags)
+    if 'ietf_wg' in request.GET:
+        query_dict['ietf_wg'] = request.GET['ietf_wg']
     if 'recurse' in request.GET:
         query_dict['recursion'] = request.GET['recurse']
     if 'rfcs' in request.GET and request.GET['rfcs'] != 0:
@@ -1050,7 +1051,6 @@ def is_submod(mod_obj):
     except Exception as e:
         return False
 
-
 def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, recurse=0,
                 nested=False, show_subm=True, show_dir='both'):
     """
@@ -1080,7 +1080,6 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
         module = get_parent(mod_obj)
     elif show_subm:
         is_subm = is_submod(mod_obj)
-
     if nested and nseen.get(module) is not None:
         return
     if mod_obj.get('organization') is not None:
@@ -1121,10 +1120,10 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                 mobj = get_rev_org_obj(mod, alerts)
                 if mobj is None:
                     continue
-                if not show_subm:
-                    mod = get_parent(mobj)
-                else:
+                if show_subm:
                     is_msubm = is_submod(mobj)
+                else:
+                    mod = get_parent(mobj)
 
                 if eseen.get("mod_{}:mod_{}".format(module, mod)):
                     continue
@@ -1172,10 +1171,9 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                 mobj = get_rev_org_obj(mod, alerts)
 
                 if show_subm:
-                    mod = get_parent(mobj)
-                else:
                     is_msubm = is_submod(mobj)
-
+                else:
+                    mod = get_parent(mobj)
                 if eseen.get("mod_{}:mod_{}".format(mod, module)) is not None:
                     continue
 
@@ -1370,3 +1368,4 @@ def get_latest_mod(module, alerts, depth=1):
     except Exception as e:
         raise Exception("Failed to get revision for {}".format(module))
     return module
+
