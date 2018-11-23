@@ -466,10 +466,10 @@ def yang_tree(request, module = ''):
             module = ''
         else:
             title = "YANG Tree for Module: '{}'".format(module)
-            mod_obj = get_rev_org_obj(module, 1, alerts)
+            mod_obj = get_rev_org_obj(module, alerts)
 
             modn = module.split('@', 1)[0]
-            module = "{}@{}".format(modn, mod_obj['rev'])
+            module = "{}@{}".format(modn, mod_obj['revision'])
             f = '/var/yang/ytrees/{}.json'.format(module)
             maturity = get_maturity(mod_obj)
             if os.path.isfile(f):
