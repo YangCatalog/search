@@ -49,7 +49,7 @@
             {% endif %}
         </div>
         <script>
-            var tableColumns = ["Name", "Revision", "Schema Type", "Path", "Module", "Origin", "Organization", "Maturity", "Imported By # Modules", "Compilation Status", "Description"];
+            var tableColumns = {{ search_columns|safe }}  
             {#var tableColumns = JSON.parse('{{ new_columns }}');#}
             var prev_idx = -1;
             var dt;

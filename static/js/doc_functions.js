@@ -62,7 +62,29 @@ $(document).on('click', '#regexp', function (e) {
         $('#search_string').prop('placeholder', 'Search String');
     }
 });
-
+$(document).on('click', '#headersAll', function (e) {
+    if ($(this).is(':checked')) {
+        $('.yang-headers-select').prop('checked', true);
+    } else {
+        $('.yang-headers-select').prop('checked', false);
+    }
+});
+$(document).on('click', '.yang-headers-select', function (e) {
+    if (!$(this).is(':checked')) {
+        $('#headersAll').prop('checked', false);
+    } else {
+        var allChecked = true;
+        $('.yang-headers-select').each(function (i, e) {
+            if (!$(this).is(':checked')) {
+                allChecked = false;
+                return;
+            }
+        });
+        if (allChecked) {
+            $('#headersAll').prop('checked', true);
+        }
+    }
+});
 function verify() {
     if (!$('#search_string').val().trim()) {
         alert('Please specify search terms.');
