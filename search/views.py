@@ -1,27 +1,27 @@
 # Copyright 2018 Cisco and its afficiliates
-#
+# 
 # Authors Joe Clarke jclarke@cisco.com and Tomas Markovic <Tomas.Markovic@pantheon.tech> for the Python version
-#
+# 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-#
+# 
 #     http://www.apache.org/licenses/LICENSE-2.0
-#
+# 
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,
 #     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 #     See the License for the specific language governing permissions and
 #     limitations under the License.
 
+from urllib.parse import urlencode
+
 from django.shortcuts import render
 from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse
 from django.shortcuts import redirect
-from django.urls import reverse
-from urllib.parse import urlencode
 from Crypto.Hash import SHA, HMAC
-from . import views
+import datetime
 import configparser
 import math
 import requests
@@ -30,8 +30,7 @@ import json
 import os
 import time
 
-from .models import modules
-from .models import yindex
+from elasticsearch import Elasticsearch
 
 __module = [
     'name', 'revision', 'organization', 'ietf', 'namespace', 'schema', 'generated-from', 'maturity-level',
@@ -50,7 +49,6 @@ schema_types = [{'Typedef': 'typedef', 'Grouping': 'grouping', 'Feature': 'featu
 
 REST_TIMEOUT = 300
 
-alerts = []
 MATURITY_UNKNOWN = '#663300'
 MATURITY_MAP = {
     'INITIAL': '#c900ff',
@@ -70,12 +68,26 @@ SDOS = [
     'ieee',
     'bbf',
     'odp',
+    'mef'
 ]
 
 found_orgs = dict()
 found_mats = dict()
 
 logger = logging.getLogger(__name__)
+config_path = '/etc/yangcatalog/yangcatalog.conf'
+config = configparser.ConfigParser()
+config._interpolation = configparser.ExtendedInterpolation()
+config.read(config_path)
+es_host = config.get('DB-Section', 'es-host')
+es_port = config.get('DB-Section', 'es-port')
+es_protocol = config.get('DB-Section', 'es-protocol')
+es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
+initialize_body_yindex = json.load(open('search/templates/json/initialize_yindex_elasticsearch.json', 'r'))
+initialize_body_modules = json.load(open('search/templates/json/initialize_module_elasticsearch.json', 'r'))
+es.indices.create(index='yindex', body=initialize_body_yindex, ignore=400)
+es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
+logging.getLogger('elasticsearch').setLevel(logging.ERROR)
 
 
 def index(request):
@@ -97,6 +109,12 @@ def index(request):
         "Compilation Status",
         "Description"
     ]
+    search_columns_show = [
+        ["Name", "Revision", "Schema Type"],
+        ["Path", "Module", "Origin"],
+        ["Organization", "Maturity", "Imported By # Modules"],
+        ["Compilation Status", "Description"]
+    ]
     post_json = {
         'filter': {
             'module': [
@@ -116,7 +134,7 @@ def index(request):
     if 'case' in request.GET:
         post_json['case-sensitive'] = True
     else:
-        post_json['case_sensitive'] = False
+        post_json['case-sensitive'] = False
 
     if 'regexp' in request.GET:
         post_json['type'] = 'regex'
@@ -148,21 +166,33 @@ def index(request):
             post_json['yang-versions'].append(version)
 
     if 'schemaAll' not in request.GET:
+        post_json['schema-types'] = ['typedef', 'grouping', 'feature',
+                                     'identity', 'extension', 'rpc',
+                                     'container', 'list', 'leaf-list',
+                                     'leaf', 'notification', 'action']
+    else:
         if 'schemaTypes[]' in request.GET:
             types = request.GET.getlist('schemaTypes[]')
             post_json['schema-types'] = []
             for one_type in types:
                 post_json['schema-types'].append(one_type)
 
-    logger.error(post_json)
-    output = search(post_json, search_term)
+    if 'headersAll' in request.GET:
+        post_json['headers'] = search_columns
+    else:
+        if 'headersTypes[]' in request.GET:
+            headers = request.GET.getlist('headersTypes[]')
+            post_json['headers'] = []
+            for one_header in headers:
+                post_json['headers'].append(one_header)
+            search_columns = post_json['headers']
+
+    alerts = []
+    output = search(post_json, search_term, alerts)
     context = dict()
-
-    new_columns = json.dumps(search_columns)
-
     context.update({'search_term': search_term, 'search_fields': search_fields,
                     'yang_versions': yang_versions, 'schema_types': schema_types, 'alerts': alerts,
-                    'search_columns': search_columns, 'new_columns': new_columns})
+                    'search_columns': search_columns, 'search_columns_show': search_columns_show})
     context['results'] = output
     return render(request, 'search/index.html', context)
 
@@ -182,25 +212,71 @@ def show_node(request, name='', path='', revision=''):
     context = dict()
     try:
         if not revision:
-            revision = get_latest_mod(name, alerts)
+            revision = get_latest_mod(name)
             revision = revision.split('@')[1]
-        node = yindex.objects.filter(module=name, path=path, revision=revision)[:1]
-        if node is None:
+        query = json.load(open('search/templates/json/show_node.json', 'r'))
+        query['query']['bool']['must'][0]['match_phrase']['module.keyword']['query'] = name
+        query['query']['bool']['must'][1]['match_phrase']['path.keyword']['query'] = path
+        query['query']['bool']['must'][2]['match_phrase']['revision']['query'] = revision
+        hits = es.search(index='yindex', doc_type='modules', body=query)['hits']['hits']
+        if len(hits) == 0:
             alerts.append('Could not find data for {} at {}'.format(name, path))
-        result = node.values().get()
-        context['show_node'] = result
-        context['properties'] = json.loads(result['properties'])
+        else:
+            result = hits[0]['_source']
+            context['show_node'] = result
+            context['properties'] = json.loads(result['properties'])
     except:
         alerts.append('Module and path must be specified')
     context['alerts'] = alerts
     return render(request, 'search/show_node.html', context)
 
 
+def create_prev_next(module, rv):
+    query = \
+        {
+            "query": {
+                "bool": {
+                    "must": [{
+                        "match_phrase": {
+                            "module.keyword": {
+                                "query": module
+                            }
+                        }
+                    }]
+                }
+            },
+            "sort": [
+                {"revision": {"order": "desc"}}
+            ]
+        }
+    mods = es.search(index='modules', doc_type='modules', body=query)['hits']['hits']
+    prev = None
+    nxt = None
+    i = 0
+    revisions = []
+    for mod in mods:
+        i = i + 1
+        mod = mod['_source']
+
+        if mod['revision'] != rv:
+            revisions.append(mod['revision'])
+        else:
+            revisions.append('current@{}'.format(mod['revision']))
+        #    try:
+        #        nxt = mods[i]['_source']['revision']
+        #    except IndexError as e:
+        #        pass
+        #    break
+        #prev = mod['revision']
+
+    return revisions
+
+
 def module_details(request, module=''):
     """
     View for module_details, which provides context for module_details.html
     Takes request args, and makes requests to local database, and api.
-    :param request: Array with arguments from webpage data submission.
+    :param request: Array with arguments from webpage data submition.
     :param module: Takes first argument from url if request does not
     contain module argument.
     :return: returns context for module_details.html
@@ -217,15 +293,15 @@ def module_details(request, module=''):
         module = module.replace('.yin', '')
         rev_org = get_rev_org('yang-catalog', 1, alerts)
         revision = rev_org['rev']
-
-        mod = yindex.objects.values('argument', 'description', 'properties') \
-            .filter(module='yang-catalog', revision=revision) \
-            .order_by('argument', 'module', 'revision')
-        logger.error('{}'.format(mod))
+        query = json.load(open('search/templates/json/get_yang_catalog_yang.json', 'r'))
+        query['query']['bool']['must'][1]['match_phrase']['revision']['query'] = revision
+        mod = es.search(index='yindex', doc_type='modules', body=query, size=10000)['hits']['hits']
         rv_org = get_rev_org(module, 1, alerts)
         module = module.split('@')[0]
         rv = rv_org['rev']
+        logger.error(rv)
         org = rv_org['org']
+        revisions = create_prev_next(module, rv)
         url = 'https://yangcatalog.org/api/search/modules/' + module + ',' + rv + ',' + org
         response = requests.get(url, headers={'Content-type': 'application/json', 'Accept': 'application/json'})
         if response.text is not None:
@@ -242,6 +318,7 @@ def module_details(request, module=''):
                 else:
                     module_details[key] = ''
             for m in mod:
+                m = m['_source']
                 if m.get('argument') is not None and m.get('argument') == key:
                     if m.get('description') is not None:
                         help_text = m.get('description')
@@ -260,11 +337,17 @@ def module_details(request, module=''):
                         break
                 module_details['{}_ht'.format(key)] = help_text
 
+        module_details['revision'] = revisions
         context['module_details'] = module_details
         context['keys'] = __module
         context['module'] = module
         context['revision'] = rv
         context['organization'] = org
+        context['mod_rev'] = '{}@{}'.format(module, rv)
+#        context['prev'] = prev
+ #       context['next'] = nxt
+#        context['prev_text'] = '{}@{}'.format(module, prev)
+ #       context['next_text'] = '{}@{}'.format(module, nxt)
         context['title'] = 'Module Details for {}@{}/{}'.format(module, rv, org)
     except Exception as e:
         context['title'] = title
@@ -297,16 +380,19 @@ def completions(request, type, pattern):
 
     selector = None
     try:
+        completion = json.load(open('search/templates/json/completion.json', 'r'))
+
         if type == 'org':
             selector = 'organization'
-            rows = modules.objects.values('organization').filter(organization__contains=pattern).distinct()[:10]
-            for row in rows:
-                res.append(row[selector])
         elif type == 'module':
             selector = 'module'
-            rows = modules.objects.values('module').filter(module__contains=pattern).distinct()[:10]
-            for row in rows:
-                res.append(row[selector])
+
+        completion['query']['bool']['must'][0]['term'] = {selector: pattern.lower()}
+        completion['aggs']['groupby_module']['terms']['field'] = '{}.keyword'.format(selector)
+        rows = es.search(index='modules', doc_type='modules', body=completion, size=0)['aggregations']['groupby_module']['buckets']
+
+        for row in rows:
+            res.append(row['key'])
 
     except Exception as e:
         raise Exception(e)
@@ -345,7 +431,7 @@ def yangsuite(request, module):
         module = module.split('@')[0]
         mod_obj = moduleFactory(module, rev_org['rev'], rev_org['org'], False, True)
         obj = fetch(mod_obj)
-
+            
         if obj.get('ys_url') is not None:
             url = obj['ys_url']
 
@@ -381,7 +467,7 @@ def metadata_update(request):
     """
     Provides hyperlink for database update, on which we send requests.
     :param request: Array with arguments from rest request.
-    :return: calls scripts for database update and file generation
+    :return: calls scripts for database update and file generation 
     """
     config_path = '/etc/yangcatalog/yangcatalog.conf'
     config = configparser.ConfigParser()
@@ -467,10 +553,10 @@ def yang_tree(request, module = ''):
             module = ''
         else:
             title = "YANG Tree for Module: '{}'".format(module)
-            mod_obj = get_rev_org_obj(module, alerts)
+            mod_obj = get_rev_org(module, 1, alerts)
 
             modn = module.split('@', 1)[0]
-            module = "{}@{}".format(modn, mod_obj['revision'])
+            module = "{}@{}".format(modn, mod_obj['rev'])
             f = '/var/yang/ytrees/{}.json'.format(module)
             maturity = get_maturity(mod_obj)
             if os.path.isfile(f):
@@ -518,10 +604,11 @@ def yang_tree(request, module = ''):
     context['maturity'] = maturity
     return render(request, 'search/yang_tree.html', context)
 
+
 def impact_analysis(request, module=''):
     """
-    View for impact_analysis.html
-    :param request: Array with arguments from REST request.
+    View for impact_analysis.html 
+    :param request: Array with arguments from rest request.
     :param module: Module for which we are generating impact_analysis, this arg is only used
     when we are accessing webpage from link in search. Otherwise request arguments are used.
     :return: Context for generating the impact_analysis webpage.
@@ -564,7 +651,7 @@ def impact_analysis(request, module=''):
                 recurse = int(request.GET['recursion'])
             except:
                 recurse = 0
-
+                
         if 'show_rfcs' not in request.GET and request.GET != {}:
             show_rfcs = False
         if 'show_subm' not in request.GET and request.GET != {}:
@@ -582,7 +669,7 @@ def impact_analysis(request, module=''):
                 for mod_obj in mod_objs:
                     if mod_obj.get('name') is not None:
                         m = mod_obj['name']
-
+                        
                         if mod_obj.get('maturity-level') != 'adopted' and mod_obj.get('maturity-level') != 'ratified':
                             continue
                         good_mods.append(m)
@@ -598,7 +685,6 @@ def impact_analysis(request, module=''):
                 else:
                     m = m.replace('.yang', '')
                     m = m.replace('.yin', '')
-                    m = m.strip()
                     mod_obj = get_rev_org_obj(m, alerts)
                     m = m.split('@')[0]
                     good_mods.append(m)
@@ -606,6 +692,7 @@ def impact_analysis(request, module=''):
                                 recurse, False, show_subm, show_dir)
         if len(good_mods) > 0:
             title = 'YANG Impact Graph for Module(s): ' + ', '.join(good_mods)
+        logger.error(edge_counts)
         edge_counts = asort(edge_counts)
         curr_count = 0
         tbottlenecks = []
@@ -616,7 +703,7 @@ def impact_analysis(request, module=''):
             tbottlenecks.append(pair[0])
             found_bottleneck = True
             curr_count = pair[1]
-
+    
         for bn in tbottlenecks:
             found_dep = False
             for edge in edges:
@@ -629,7 +716,7 @@ def impact_analysis(request, module=''):
                         found_dep = True
             if not found_dep:
                 bottlenecks.append("node#mod_{}".format(bn))
-
+    
         num_legend_cols = math.ceil(len(found_orgs) / 6)
         if num_legend_cols < 1:
             num_legend_cols = 1
@@ -671,51 +758,7 @@ def impact_analysis(request, module=''):
     return render(request, 'search/impact_analysis.html', context)
 
 
-def impact_analysis_php(request):
-    """
-    Try to be compatible with the old YangSearch URL:
-    https://www.yangcatalog.org/yang-search/impact_analysis.php?modules[]=ietf-lisp@2018-11-04.yang&modules[]=ietf-lisp-mapserver@2018-06-29.yang&modules[]=ietf-lisp-address-types@2018-06-29.yang&modules[]=ietf-lisp-etr@2018-09-06.yang&modules[]=ietf-lisp-itr@2018-06-29.yang&modules[]=ietf-lisp-mapresolver@2018-06-29.yang&recurse=0&rfcs=1&show_subm=1&show_dir=both
-
-    The webserver (NGINX) will do the rewrite of /yang-search/impact_analysis.php? into /yang-search/impact_analysis.php/? to allow django processing
-    :param request: Array with arguments from REST request.
-    :return: Context to redirect to the new URL scheme
-    """
-
-    # Get the full URL for impact_analysis
-#    base_url = reverse('impact_analysis')
-#    base_url = reverse(views.impact_analysis)
-#    base_url = reverse(impact_analysis)
-    base_url = 'https://yangcatalog.org/yang-search/impact_analysis/'
-    # More complex now... let's translate the query_string
-    query_dict = dict()
-    modtags = []
-    for m in request.GET.getlist('modules[]'):
-        modtags.append(m)
-    if len(modtags) > 0:
-        query_dict['modtags'] = ','.join(modtags)
-    orgtags = []
-    for m in request.GET.getlist('orgs[]'):
-        orgtags.append(m)
-    if len(orgtags) > 0:
-        query_dict['orgtags'] = ','.join(orgtags)
-    if 'ietf_wg' in request.GET:
-        query_dict['ietf_wg'] = request.GET['ietf_wg']
-    if 'recurse' in request.GET:
-        query_dict['recursion'] = request.GET['recurse']
-    if 'rfcs' in request.GET and request.GET['rfcs'] != 0:
-        query_dict['show_rfcs'] = 1
-    if 'show_subm' in request.GET and request.GET['show_subm'] != 0:
-        query_dict['show_subm'] = 1
-    if 'show_dir' in request.GET:
-        query_dict['show_dir'] = request.GET['show_dir']
-    query_string = urlencode(query_dict)
-    # Construct the URL with the query string
-    url = '{}?{}'.format(base_url, query_string)
-    print('URL = ' + url)
-    return redirect(url, permanent=False)
-
-
-def search(post_json, search_term):
+def search(post_json, search_term, alerts):
     """
     Searches for results of the main yang-search webpage.
     :param post_json: Json which we are sending to api
@@ -724,14 +767,16 @@ def search(post_json, search_term):
     """
     if search_term != '':
 
-        response = requests.post('https://yangcatalog.org/api/index/search', json=post_json,
+        response = requests.post('https://yangcatalog.org/api/fast', json=post_json,
                                  headers={'Content-type': 'application/json', 'Accept': 'application/json'})
         results = response.json().get('results')
 
-        all_results = []
+        all_results = set()
 
         if results is None:
             return ''
+
+        node_name_ctx = {}
         for result in results:
 
             results_context = {}
@@ -745,7 +790,8 @@ def search(post_json, search_term):
 
             if module is not None:
                 if module.get('error') is not None:
-                    return alerts.append(module.get('error'))
+                    alerts.append(module.get('error'))
+                    continue
                 if module['name'] is None:
                     continue
                 organization = module['organization']
@@ -754,12 +800,16 @@ def search(post_json, search_term):
                 else:
                     maturity = ''
                 revision = module['revision']
-                dependents = module['dependents']
-                if dependents:
-                    dependents = len(dependents)
-                else:
+                dependents = module.get('dependents')
+                if dependents is None:
                     dependents = '0'
-                compile_status = module['compilation-status']
+                else:
+                    dependents = len(dependents)
+
+                try:
+                    compile_status = module['compilation-status']
+                except:
+                    logger.error('{}@{}'.format(module['name'], module['revision']))
                 mod_sig = "{}@{}/{}".format(
                     module['name'], module['revision'], module['organization']
                 )
@@ -782,20 +832,41 @@ def search(post_json, search_term):
                 node_name = node['name']
                 description = node['description']
 
-            results_context["name"] = name
-            results_context["organization"] = organization
-            results_context["maturity"] = maturity
-            results_context["compile_status"] = compile_status
-            results_context["origin"] = origin
             results_context["mod_sig"] = mod_sig
-            results_context["revision"] = revision
-            results_context["type"] = type
-            results_context["path"] = path
-            results_context["dependents"] = dependents
-            results_context["node_name"] = node_name
-            results_context["description"] = description
-            all_results.append(results_context)
-        return all_results
+
+            headers = post_json['headers']
+
+            if "Module" in headers:
+                results_context["name"] = name
+            if "Organization" in headers:
+                results_context["organization"] = organization
+            if "Maturity" in headers:
+                results_context["maturity"] = maturity
+            if "Compilation Status" in headers:
+                results_context["compile_status"] = compile_status
+            if "Origin" in headers:
+                results_context["origin"] = origin
+            if "Revision" in headers:
+                results_context["revision"] = revision
+            if "Schema Type" in headers:
+                results_context["type"] = type
+            if "Path" in headers:
+                results_context["path"] = path
+            if "Imported By # Modules" in headers:
+                results_context["dependents"] = dependents
+            if "Name" in headers:
+                results_context["node_name"] = node_name
+                results_context["name"] = name
+                results_context["revision"] = revision
+                results_context["path"] = path
+            if "Description" in headers:
+                results_context["description"] = description
+            all_results.add(json.dumps(results_context))
+        all_results_list = []
+        for res in all_results:
+            res = json.loads(res)
+            all_results_list.append(res)
+        return all_results_list
     else:
         return ''
 
@@ -812,13 +883,51 @@ def get_rev_org(mod, depth=1, alerts=[]):
             mod_parts = mod.split('@')
             modn = mod_parts[0]
             rev = mod_parts[1]
-            rev_org = modules.objects.values('revision', 'organization').filter(module=modn, revision=rev)
+            query = \
+                {
+                    "query": {
+                        "bool": {
+                            "must": [{
+                                "match_phrase": {
+                                    "module.keyword": {
+                                        "query": modn
+                                    }
+                                }
+                            }, {
+                                "match_phrase": {
+                                    "revision": {
+                                        "query": rev
+                                    }
+                                }
+                            }]
+                        }
+                    }
+                }
+            rev_org = es.search(index='modules', doc_type='modules', body=query)['hits']['hits']
         else:
-            rev_org = modules.objects.filter(module=mod).values('revision', 'organization') \
-                          .order_by('-revision')[:depth]
+            query = \
+                {
+                    "query": {
+                        "bool": {
+                            "must": [{
+                                "match_phrase": {
+                                    "module.keyword": {
+                                        "query": mod
+                                    }
+                                }
+                            }]
+                        }
+                    },
+                    "sort": [
+                        {"revision": {"order": "desc"}}
+                    ]
+                }
+            rev_org = es.search(index='modules', doc_type='modules', body=query)['hits']['hits']
+
         row = dict()
         i = 1
         for result in rev_org:
+            result = result['_source']
             if i > depth:
                 break
             row.update(result)
@@ -1032,7 +1141,7 @@ def get_parent(mod_obj):
     try:
         bt = mod_obj.get('belongs-to')
         if not bt:
-            return mod_obj.get('name')
+            return mod_obj.get('name') 
         return bt
     except Exception as e:
         return mod_obj.get('name')
@@ -1041,7 +1150,7 @@ def get_parent(mod_obj):
 def is_submod(mod_obj):
     """
     Find out whether module has a parent or not.
-    :param mod_obj: module object
+    :param mod_obj: module object 
     :return: module status
     """
     try:
@@ -1052,13 +1161,14 @@ def is_submod(mod_obj):
     except Exception as e:
         return False
 
+
 def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, recurse=0,
                 nested=False, show_subm=True, show_dir='both'):
     """
     Builds graph for impact_analysis. takes module name, and mod_obj, which has all of the modules
     dependents and dependencies.
     Goes through both dependents and dependencies and adds them to output if they are
-    eligible for
+    eligible for 
     :param module: module name
     :param mod_obj: module object
     :param orgs: organizations array
@@ -1081,6 +1191,7 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
         module = get_parent(mod_obj)
     elif show_subm:
         is_subm = is_submod(mod_obj)
+
     if nested and nseen.get(module) is not None:
         return
     if mod_obj.get('organization') is not None:
@@ -1121,10 +1232,10 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                 mobj = get_rev_org_obj(mod, alerts)
                 if mobj is None:
                     continue
-                if show_subm:
-                    is_msubm = is_submod(mobj)
-                else:
+                if not show_subm:
                     mod = get_parent(mobj)
+                else:
+                    is_msubm = is_submod(mobj)
 
                 if eseen.get("mod_{}:mod_{}".format(module, mod)):
                     continue
@@ -1172,9 +1283,10 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                 mobj = get_rev_org_obj(mod, alerts)
 
                 if show_subm:
-                    is_msubm = is_submod(mobj)
-                else:
                     mod = get_parent(mobj)
+                else:
+                    is_msubm = is_submod(mobj)
+
                 if eseen.get("mod_{}:mod_{}".format(mod, module)) is not None:
                     continue
 
@@ -1279,7 +1391,18 @@ def color_gen(org):
         return ORG_CACHE[org]
     if NUM_STEPS == -1:
         try:
-            row = modules.objects.values('organization').order_by('organization').distinct().count()
+            query = \
+                {
+                    "size": 0,
+                    "aggs": {
+                        "distinct_orgs": {
+                            "cardinality": {
+                                "field": "organization.keyword"
+                            }
+                        }
+                    }
+                }
+            row = es.search(index='modules', doc_type='modules', body=query)['aggregations']['distinct_orgs']['value']
             NUM_STEPS = row + 1
         except Exception as e:
             NUM_STEPS = 33
@@ -1297,21 +1420,21 @@ def color_gen(org):
         g = f
         b = 0
     elif result == 1:
-        r = 0
-        g = q
-        b = 1
-    elif result == 2:
         r = q
         g = 1
         b = 0
-    elif result == 3:
-        r = f
-        g = 0
-        b = 1
-    elif result == 4:
+    elif result == 2:
         r = 0
         g = 1
         b = f
+    elif result == 3:
+        r = 0
+        g = q
+        b = 1
+    elif result == 4:
+        r = f
+        g = 0
+        b = 1
     elif result == 5:
         r = 1
         g = 0
@@ -1351,22 +1474,75 @@ def asort(d):
     return sorted(d.items(), key=lambda x: x[1], reverse=True)
 
 
-def get_latest_mod(module, alerts, depth=1):
+def get_latest_mod(module):
     """
     Gets latest version of module.
     :param module: module name
-    :param alerts: alerts
-    :param depth: depth how far should function search when looking for latest module
     :return: module
     """
     try:
-        sth = modules.objects.values('revision').filter(module=module).order_by('-revision').distinct()[:depth]
-        i = 0
-        for row in sth:
-            if row and row.get('revision'):
-                return "{}@{}".format(module, row['revision'])
-
+        query = \
+            {
+                "query": {
+                    "bool": {
+                        "must": [{
+                            "match_phrase": {
+                                "module.keyword": {
+                                    "query": module
+                                }
+                            }
+                        }]
+                    }
+                },
+                "sort": [
+                    {"revision": {"order": "desc"}}
+                ]
+            }
+        rev_org = es.search(index='modules', doc_type='modules', body=query)['hits']['hits'][0]['_source']
+        return "{}@{}".format(module, rev_org['revision'])
     except Exception as e:
         raise Exception("Failed to get revision for {}".format(module))
-    return module
 
+
+def impact_analysis_php(request):
+    """
+    Try to be compatible with the old YangSearch URL:
+    https://www.yangcatalog.org/yang-search/impact_analysis.php?modules[]=ietf-lisp@2018-11-04.yang&modules[]=ietf-lisp-mapserver@2018-06-29.yang&modules[]=ietf-lisp-address-types@2018-06-29.yang&modules[]=ietf-lisp-etr@2018-09-06.yang&modules[]=ietf-lisp-itr@2018-06-29.yang&modules[]=ietf-lisp-mapresolver@2018-06-29.yang&recurse=0&rfcs=1&show_subm=1&show_dir=both
+
+    The webserver (NGINX) will do the rewrite of /yang-search/impact_analysis.php? into /yang-search/impact_analysis.php/? to allow django processing
+    :param request: Array with arguments from REST request.
+    :return: Context to redirect to the new URL scheme
+    """
+
+    # Get the full URL for impact_analysis
+#    base_url = reverse('impact_analysis')
+#    base_url = reverse(views.impact_analysis)
+#    base_url = reverse(impact_analysis)
+    base_url = 'https://yangcatalog.org/yang-search/impact_analysis/'
+    # More complex now... let's translate the query_string
+    query_dict = dict()
+    modtags = []
+    for m in request.GET.getlist('modules[]'):
+        modtags.append(m)
+    if len(modtags) > 0:
+        query_dict['modtags'] = ','.join(modtags)
+    orgtags = []
+    for m in request.GET.getlist('orgs[]'):
+        orgtags.append(m)
+    if len(orgtags) > 0:
+        query_dict['orgtags'] = ','.join(orgtags)
+    if 'ietf_wg' in request.GET:
+        query_dict['ietf_wg'] = request.GET['ietf_wg']
+    if 'recurse' in request.GET:
+        query_dict['recursion'] = request.GET['recurse']
+    if 'rfcs' in request.GET and request.GET['rfcs'] != 0:
+        query_dict['show_rfcs'] = 1
+    if 'show_subm' in request.GET and request.GET['show_subm'] != 0:
+        query_dict['show_subm'] = 1
+    if 'show_dir' in request.GET:
+        query_dict['show_dir'] = request.GET['show_dir']
+    query_string = urlencode(query_dict)
+    # Construct the URL with the query string
+    url = '{}?{}'.format(base_url, query_string)
+    print('URL = ' + url)
+    return redirect(url, permanent=False)

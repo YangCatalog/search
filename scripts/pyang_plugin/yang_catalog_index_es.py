@@ -15,7 +15,8 @@ from pyang import plugin, statements
 import json
 import optparse
 import re
-
+import dateutil.parser
+import hashlib
 from pyang.util import get_latest_revision
 
 _yang_catalog_index_fd = None
@@ -39,20 +40,20 @@ class IndexerPlugin(plugin.PyangPlugin):
 
     def add_output_format(self, fmts):
         self.multiple_modules = True
-        fmts['yang-catalog-index'] = self
+        fmts['yang-catalog-index_es'] = self
 
     def add_opts(self, optparser):
         optlist = [
             optparse.make_option("--yang-index-no-schema-es",
-                                 dest="yang_index_no_schema",
+                                 dest="yang_index_no_schema_es",
                                  action="store_true",
                                  help="""Do not include SQL schema in output"""),
             optparse.make_option("--yang-index-schema-only-es",
-                                 dest="yang_index_schema_only",
+                                 dest="yang_index_schema_only_es",
                                  action="store_true",
                                  help="""Only include the SQL schema in output"""),
             optparse.make_option("--yang-index-make-module-table-es",
-                                 dest="yang_index_make_module_table",
+                                 dest="yang_index_make_module_table_es",
                                  action="store_true",
                                  help="""Generate a modules table that includes various aspects about the modules themselves""")
         ]
@@ -76,13 +77,7 @@ def emit_index(ctx, modules, fd):
     global  _ctx
 
     _ctx = ctx
-    #if not ctx.opts.yang_index_no_schema:
-    #    fd.write(
-    #        "CREATE TABLE yindex(module, revision, organization, path, statement, argument, description, properties);\n")
-    #    if ctx.opts.yang_index_make_module_table:
-    #        fd.write(
-    #            "CREATE TABLE modules(module, revision, yang_version, belongs_to, namespace, prefix, organization, maturity, compile_status, document, file_path);\n")
-    if not ctx.opts.yang_index_schema_only:
+    if not ctx.opts.yang_index_schema_only_es:
         _yang_catalog_index_values = [] ;
         mods = []
         for module in modules:
@@ -155,6 +150,11 @@ def index_printer(stmt):
         revision = '1970-01-01'
     else:
         revision = rev
+    try:
+        dateutil.parser.parse(revision)
+    except ValueError as e:
+        if revision[-2:] == '29' and revision[-5:-3] == '02':
+            revision = revision.replace('02-29', '02-28')
     for i in stmt.substmts:
         a = i.arg
         k = i.keyword
@@ -181,15 +181,18 @@ def index_printer(stmt):
     vals['description'] = dstr
     vals['properties'] = json.dumps(subs)
 
+    text = '{} {} {} {} {} {} {} {}'.format(vals['module'], vals['revision'], vals['organization'],
+                                            vals['path'], vals['statement'], vals['argument'],
+                                            vals['description'], vals['properties'])
+    vals['sort-hash-id'] = hashlib.sha256(text.encode('utf-8')).hexdigest()
     _values['yindex'].append(vals)
 
 def resolve_organization(module):
-
     if module.keyword == 'submodule':
-        belongs_to_module = _ctx.read_module(module.search_one('belongs-to').arg)
-        mod = belongs_to_module.copy()
+        belongs_to_module = module.i_ctx.read_module(module.search_one('belongs-to').arg)
+        mod = belongs_to_module
     else:
-        mod = module.copy()
+        mod = module
 
     try:
         temp_organization = mod.search('organization')[0].arg.lower()
@@ -206,10 +209,10 @@ def resolve_organization(module):
     for ns, org in NS_MAP.items():
         if ns in namespace:
             return org
-    if 'urn:' in namespace:
-        return namespace.split('urn:')[1].split(':')[0]
-    elif 'cisco' in namespace:
+    if 'cisco' in namespace:
         return 'cisco'
     elif 'ietf' in namespace:
         return 'ietf'
+    elif 'urn:' in namespace:
+        return namespace.split('urn:')[1].split(':')[0]
     return 'independent'

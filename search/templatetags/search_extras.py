@@ -130,6 +130,51 @@ def dissolve(properties, indent = '\t'):
     return str
 
 
+@register.filter(name='search_results')
+def search_results(results, search_columns):
+    html = ''
+    if results:
+        for result in results:
+            html += '<tr>'
+            if "Name" in search_columns:
+                html += '<td> <a href="/yang-search/show_node/{}/{}/{}">{}</a></td>'\
+                    .format(result['name'], result['path'], result['revision'], result['node_name'])
+            if "Revision" in search_columns:
+                html += '<td>{}</td>'.format(result['revision'])
+            if "Schema Type" in search_columns:
+                html += '<td>{}</td>'.format(result['type'])
+            if "Path" in search_columns:
+                html += '<td>{}</td>'.format(result['path'])
+            if "Module" in search_columns:
+                html += '<td>{}<br/>'.format(result['name'])
+                html += '<span style = "font-size: small">'
+                html += '(<a href="/yang-search/module_details/{}">'.format(result['name'])
+                html += '<img src="/yang-search/static/img/details.png" border="0" title="Module Details for {}" > Module Details </a>'.format(result['name'])
+                html += '|<a href="/yang-search/yang_tree/{}" >'.format(result['name'])
+                html += '<img border="0" src="/yang-search/static/img/leaf.png" title="Tree View for {}" >'.format(result['name'])
+                html += 'Tree View </a>|'
+                html += '<a href="/yang-search/impact_analysis/{}" >'.format(result['name'])
+                html += '<img src="/yang-search/static/img/impact.png" border="0" title="Impact Analysis for {}" >'.format(result['name'])
+                html += 'Impact Analysis </a>) </span> </td>'
+            if "Origin" in search_columns:
+                html += '<td> {} </td>'.format(result['origin'])
+            if "Organization" in search_columns:
+                html += '<td> {} </td>'.format(result['organization'])
+            if "Maturity" in search_columns:
+                html += '<td> {} </td>'.format(result['maturity'])
+            if "Imported By # Modules" in search_columns:
+                html += '<td> {} </td>'.format(result['dependents'])
+            if "Compilation Status" in search_columns:
+                if result['compile_status']:
+                    html += '<td> {} </td>'.format(result['compile_status'])
+                else:
+                    html += '<td> N/A </td>'
+            if "Description" in search_columns:
+                html += '<td> {} </td>'.format(result['description'])
+            html += '</tr>'
+    return html
+
+
 @register.filter(name='print_cells')
 def print_cells(module_details):
     """
@@ -148,7 +193,7 @@ def print_cells(module_details):
 #            html += '<img src="/yang/static/img/help.png" border="0" data-html="true" data-toggle="tooltip" title="{}"/></td>' \
             html += '<img src="' + settings.STATIC_URL + '/img/help.png" border="0" data-html="true" data-toggle="tooltip" title="{}"/></td>' \
                 .format(module_details[help_text])
-            inner_html = print_cell(module_details[key], key)
+            inner_html = print_cell(module_details[key], key, module_details['name'])
             html += inner_html
             html += '</tr>\n'
         return html
@@ -156,12 +201,13 @@ def print_cells(module_details):
         return
 
 
-def print_cell(value, key, pkey=''):
+def print_cell(value, key, name, pkey=''):
     """
     Takes key and value, and based on their value, changes the way they appear
     in the final html list
     :param value: value from module details dict
     :param key: key from module details dict
+    :param name: name of the current module
     :param pkey: primary key
     :return: one entry from html list
     """
@@ -180,6 +226,20 @@ def print_cell(value, key, pkey=''):
                 match = match[0]
                 nval = nval.replace(match, '<a href="mailto:{0}">{0}</a>'.format(match))
         html += '<td>{}</td>'.format(nval)
+    elif key == 'revision':
+        html += '<td><div class="dropdown">'
+        for nv in value:
+            if 'current@' in nv:
+                html += '<button class="btn btn-default dropdown-toggle" type="button" data-toggle="dropdown">{}'.format(nv.split('@')[1])
+                break
+        html += '<span class="caret"></span></button>'
+        html += '<ul class="dropdown-menu">'
+        for nv in value:
+           if 'current@' in nv:
+               html += '<li class="active"><a href="?module={}@{}">{}</a></li>'.format(name, nv.split('@')[1], nv.split('@')[1])
+           else:
+               html += '<li><a href="?module={}@{}">{}</a></li>'.format(name, nv, nv)
+        html += '</ul></div></td>'
     else:
         npk = None
         msg = 'Click to toggle "' + key + '" details.'
@@ -200,7 +260,7 @@ def print_cell(value, key, pkey=''):
                 html += '<tr>'
                 html += '<td><b>{} : </b></td>'.format(nk)
 
-                html += print_cell(nv, nk, npk)
+                html += print_cell(nv, nk, name, npk)
                 html += '</tr>'
         else:
             i = 0
@@ -208,7 +268,7 @@ def print_cell(value, key, pkey=''):
                 nk = i
                 html += '<tr>'
                 html += '<td><b>{}: </b></td>'.format(nk)
-                html += print_cell(nv, str(nk), npk)
+                html += print_cell(nv, str(nk), name, npk)
                 i += 1
                 html += '</tr>'
         html += '</tbody>'
@@ -225,7 +285,8 @@ def unescape_str(str, indent):
     :return: string
     """
     indent += "\t"
-    str = str.replace('\n', "\n{}".format(indent))
+    str = str.replace("''", "'")
+    str = str.replace('\\n', '</br>                ')
     str = str.replace('\r', "\r")
     str = str.replace('\t', "\t")
     str = str.replace('\\\\', '\\')

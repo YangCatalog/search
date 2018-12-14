@@ -11,34 +11,25 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
-import re
-
-from scripts.listWriter import ListWriter
 
 __author__ = "Miroslav Kovac and Joe Clarke"
 __copyright__ = "Copyright 2018 Cisco and its affiliates"
 __license__ = "Apache License, Version 2.0"
 __email__ = "miroslav.kovac@pantheon.tech, jclarke@cisco.com"
-
+import json
+import logging
 import os
 import subprocess
-import MySQLdb
-import MySQLdb.cursors
+
+import dateutil.parser
+from elasticsearch import ConnectionError, ConnectionTimeout, Elasticsearch, NotFoundError
+from elasticsearch.helpers import parallel_bulk
 from pyang.plugins.json_tree import emit_tree
 from pyang.plugins.name import emit_name
-from pyang.plugins.yang_catalog_index import IndexerPlugin
+from pyang.plugins.yang_catalog_index_es import IndexerPlugin, resolve_organization
+from pyang.util import get_latest_revision
 
-from scripts.add_catalog_data import add_data
 from scripts.yangParser import create_context
-
-
-def __create_connection(dbHost, dbPass, dbName, dbUser):
-    connection = MySQLdb.connect(host=dbHost,  # your host, usually localhost
-                           user=dbUser,  # your username
-                           passwd=dbPass,  # your password
-                           db=dbName)  # name of the data base
-    cursor = connection.cursor(cursorclass=MySQLdb.cursors.DictCursor)
-    return connection, cursor
 
 
 def __run_pyang_commands(commands, output_only=True, decode=True):
@@ -56,106 +47,181 @@ def __run_pyang_commands(commands, output_only=True, decode=True):
     else:
         return stdout, stderr
 
-def __run_query(query, cur):
-    cur.execute(query)
 
-def build_yindex(private_secret, ytree_dir, modules, yang_models,
-                 dbHost, dbPass, dbName, dbUser, lock_file_cron,
-                 my_uri, LOGGER, save_file_dir):
-    conn, cur = __create_connection(dbHost, dbPass, dbName, dbUser)
+def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
+                 es_host, es_port, es_protocol, threads):
+    es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
+    initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
+    initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
+
+    es.indices.create(index='yindex', body=initialize_body_yindex, ignore=400)
+    es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
+
+    logging.getLogger('elasticsearch').setLevel(logging.ERROR)
     try:
-        LOGGER.info('Creating temporary tables')
-        cur.execute("CREATE TABLE yindex_temp LIKE yindex")
-        cur.execute("CREATE TABLE modules_temp LIKE modules")
-        cur.execute("DROP INDEX module ON yindex_temp")
-        cur.execute("DROP INDEX module_idx ON yindex_temp")
-        LOGGER.info('Temporary tables created')
-        # Comment out the next two lines for a clean start
-        cur.execute("INSERT yindex_temp SELECT * FROM yindex")
-        cur.execute("INSERT modules_temp SELECT * FROM modules")
-        LOGGER.info('Temporary tables filled')
         x = 0
         for module in modules:
             x += 1
-            LOGGER.info('build_yindex() on module {}. module {} out of {}'.format(module.split('/')[-1], x, len(modules)))
+            LOGGER.info('yindex on module {}. module {} out of {}'.format(module.split('/')[-1], x, len(modules)))
             # split to module with path and organization
             m_parts = module.split(":")
-            org = None
             if len(m_parts) > 1:
                 m = m_parts[0]
-                org = m_parts[1]
             else:
                 m = m_parts[0]
-            ctx = create_context('{}:{}'.format(yang_models, save_file_dir))
+
+            ctx = create_context('{}'.format(save_file_dir))
+
             with open(m, 'r') as f:
-                 a = ctx.add_module(m, f.read())
-            if a is None:
+                parsed_module = ctx.add_module(m, f.read())
+
+            if parsed_module is None:
                 LOGGER.warning('Unable to pyang parse module {} skipping this module'.format(module))
                 continue
             with open('temp.txt', 'w') as f:
                 ctx.opts.print_revision = True
-                emit_name(ctx, [a], f)
+                emit_name(ctx, [parsed_module], f)
             with open('temp.txt', 'r') as f:
                 name_revision = f.read().strip()
+            os.unlink('temp.txt')
+
+            mods = [parsed_module]
+
+            find_submodules(ctx, mods, parsed_module)
+            with open('temp.txt', 'w') as f:
+                ctx.opts.yang_index_make_module_table_es = True
+                ctx.opts.yang_index_no_schema_es = True
+                plugin = IndexerPlugin()
+                plugin.emit(ctx, [parsed_module], f)
+
+            with open('temp.txt', 'r') as f:
+                yindexes = json.load(f)
             os.unlink('temp.txt')
             name_revision = name_revision.split('@')
             if len(name_revision) > 1:
                 name = name_revision[0]
-                revision = name_revision[1]
+                revision = name_revision[1].split(' ')[0]
             else:
                 name = name_revision[0]
                 revision = '1970-01-01'
+            try:
+                dateutil.parser.parse(revision)
+            except ValueError as e:
+                if revision[-2:] == '29' and revision[-5:-3] == '02':
+                    revision = revision.replace('02-29', '02-28')
 
-            outputList = ListWriter()
-            ctx.opts.yang_index_make_module_table = True
-            ctx.opts.yang_index_no_schema = True
-            plugin = IndexerPlugin()
-            # Equivalent to pyang -f yang-catalog-index --yang-index-make-module-table
-            plugin.emit(ctx,[a], outputList)
 
-            cur.execute("DELETE FROM modules_temp WHERE module=%s AND revision=%s", (name, revision,))
-            cur.execute("DELETE FROM yindex_temp WHERE module=%s AND revision=%s", (name, revision,))
-            for yindex_insert_into in outputList.getOutputList():
-                insert = yindex_insert_into.replace('INSERT INTO', 'insert into')
-                insert = insert.replace('insert into modules', 'INSERT INTO modules_temp')
-                insert = insert.replace('insert into yindex', 'INSERT INTO yindex_temp')
-                #LOGGER.info('Executing: ' + insert[:40] + "...(" + str(len(insert)) + ")")
-                cur.execute(insert)
-                #LOGGER.info('INSERT INTO done')
-            cur.execute("UPDATE modules_temp SET file_path=%s WHERE module=%s AND revision=%s", (m, name, revision,))
-            if org is not None:
-                cur.execute("UPDATE modules_temp SET organization=%s WHERE module=%s AND revision=%s", (org, name, revision,))
-                cur.execute("UPDATE yindex_temp SET organization=%s WHERE module=%s AND revision=%s", (org, name, revision,))
+            retry = 3
+            while retry > 0:
+                try:
+                    for m in mods:
+                        n = m.arg
+                        rev = get_latest_revision(m)
+                        if rev == 'unknown':
+                            r = '1970-01-01'
+                        else:
+                            r = rev
+                        try:
+                            dateutil.parser.parse(r)
+                        except ValueError as e:
+                            if r[-2:] == '29' and r[-5:-3] == '02':
+                                r = r.replace('02-29', '02-28')
+                        try:
+                            query = \
+                                {
+                                    "query": {
+                                        "bool": {
+                                            "must": [{
+                                                "match_phrase": {
+                                                    "module.keyword": {
+                                                        "query": n
+                                                    }
+                                                }
+                                            }, {
+                                                "match_phrase": {
+                                                    "revision": {
+                                                        "query": r
+                                                    }
+                                                }
+                                            }]
+                                        }
+                                    }
+                                }
+                            es.delete_by_query(index='yindex', body=query, doc_type='modules', conflicts='proceed', request_timeout=40)
+                        except NotFoundError as e:
+                            pass
+                    for key in yindexes:
+                        for success, info in parallel_bulk(es, yindexes[key], thread_count=int(threads), index='yindex', doc_type='modules', request_timeout=40):
+                            if not success:
+                                LOGGER.error('A elasticsearch document failed with info: {}'.format(info))
 
-            with open('{}/{}@{}'.format(ytree_dir, name, revision), 'w') as f:
-                emit_tree([a], f, ctx)
-        add_data(conn, cur, private_secret, my_uri, LOGGER, lock_file_cron)
-        try:
-            LOGGER.info('Commiting changes into SQL database') 
-            conn.commit()
-        except Exception as e:
-            # Rollback in case there is any error
-            cur.execute("DROP TABLE yindex_temp")
-            cur.execute("DROP TABLE modules_temp")
-            os.unlink(lock_file_cron)
-            conn.rollback()
-            LOGGER.info('Failed to commit the changes')
-            raise e
-        LOGGER.info('Changes committed') 
-        cur.execute("CREATE FULLTEXT INDEX module ON yindex_temp(module, argument, description)")
-        cur.execute("CREATE INDEX module_idx ON yindex_temp(module, revision)")
-        LOGGER.info('Tables re-indexed') 
-        cur.execute("RENAME TABLE modules TO modules_remove")
-        cur.execute("RENAME TABLE modules_temp TO modules")
-        cur.execute("RENAME TABLE yindex TO yindex_remove")
-        cur.execute("RENAME TABLE yindex_temp TO yindex")
-        LOGGER.info('Tables renamed') 
-        cur.execute("DROP TABLE yindex_remove")
-        cur.execute("DROP TABLE modules_remove")
+                    rev = get_latest_revision(parsed_module)
+                    if rev == 'unknown':
+                        revision = '1970-01-01'
+                    else:
+                        revision = rev
+                    try:
+                        dateutil.parser.parse(revision)
+                    except ValueError as e:
+                        if revision[-2:] == '29' and revision[-5:-3] == '02':
+                            revision = revision.replace('02-29', '02-28')
+
+                    query = \
+                        {
+                            "query": {
+                                "bool": {
+                                    "must": [{
+                                        "match_phrase": {
+                                            "module.keyword": {
+                                                "query": name
+                                            }
+                                        }
+                                    }, {
+                                        "match_phrase": {
+                                            "revision": {
+                                                "query": revision
+                                            }
+                                        }
+                                    }]
+                                }
+                            }
+                        }
+                    total = es.delete_by_query(index='modules', body=query, doc_type='modules', conflicts='proceed',
+                                       request_timeout=40)['deleted']
+                    if total > 1:
+                        LOGGER.info('{}@{}'.format(name, revision))
+
+                    query = {}
+                    query['module'] = name
+                    query['organization'] = resolve_organization(parsed_module)
+                    query['revision'] = revision
+                    query['dir'] = parsed_module.pos.ref
+                    es.index(index='modules',  doc_type='modules', body=query, request_timeout=40)
+                    break
+                except (ConnectionTimeout, ConnectionError) as e:
+                    retry = retry - 1
+                    if retry > 0:
+                        LOGGER.warn('module {}@{} timed out'.format(name, revision))
+                    else:
+                        LOGGER.error('module {}@{} timed out too many times failing'.format(name, revision))
+                        raise e
+
+            with open('{}/{}@{}.json'.format(ytree_dir, name, revision), 'w') as f:
+                emit_tree([parsed_module], f, ctx)
+
     except Exception as e:
-        cur.execute("DROP TABLE yindex_temp")
-        cur.execute("DROP TABLE modules_temp")
         os.unlink(lock_file_cron)
-        conn.rollback()
         raise e
+
+
+def find_submodules(ctx, mods, module):
+    for i in module.search('include'):
+        r = i.search_one('revision-date')
+        if r is None:
+            subm = ctx.get_module(i.arg)
+        else:
+            subm = ctx.search_module(module.pos, i.arg, r.arg)
+        if subm is not None and subm not in mods:
+            mods.append(subm)
+            find_submodules(ctx, mods, subm)
 

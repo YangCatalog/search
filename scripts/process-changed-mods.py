@@ -37,8 +37,9 @@ import logging
 import os
 import stat
 import sys
+import dateutil.parser
 
-import MySQLdb
+from elasticsearch import Elasticsearch, NotFoundError
 from git import Repo
 from git.cmd import Git
 
@@ -105,6 +106,9 @@ if __name__ == '__main__':
     dbName = config.get('DB-Section', 'name-search')
     dbUser = config.get('DB-Section', 'user')
     dbPass = config.get('DB-Section', 'password')
+    es_host = config.get('DB-Section', 'es-host')
+    es_port = config.get('DB-Section', 'es-port')
+    es_protocol = config.get('DB-Section', 'es-protocol')
     private_secret = config.get('General-Section', 'private-secret')
     my_uri = config.get('General-Section', 'confd-ip')
     yang_models = config.get('Directory-Section', 'yang_models_dir')
@@ -114,6 +118,7 @@ if __name__ == '__main__':
     lock_file_cron = config.get('Directory-Section', 'lock-cron')
     ytree_dir = config.get('Directory-Section', 'json-ytree')
     save_file_dir = config.get('Directory-Section', 'save-file-dir')
+    threads = config.get('General-Section', 'threads')
     if os.path.exists(lock_file) or os.path.exists(lock_file_cron):
         # we can exist since this is run by cronjob every minute of every day
         LOGGER.warning('Temporary lock file used by something else. Exiting script !!!')
@@ -163,34 +168,59 @@ if __name__ == '__main__':
             f.close()
         os.unlink(lock_file)
 
-
-
     if len(delete_cache) > 0:
-        try:
-            con = MySQLdb.connect(host= dbHost,
-                                   user= dbUser,
-                                   passwd= dbPass,
-                                   db= dbName)
-            cur = con.cursor(cursorclass=MySQLdb.cursors.DictCursor)
-            for mod in delete_cache:
-                mname = mod.split('@')[0]
-                mrev_org = mod.split('@')[1]
-                mrev = mrev_org.split('/')[0]
-                morg = '/'.join(mrev_org.split('/')[1:])
-                sql = 'DELETE FROM modules WHERE module=%(mod)s AND revision=%(rev)s AND organization=%(org)s'
-                try:
-                    cur.execute(sql, {'mod': mname, 'rev': mrev,
-                                      'org': morg})
-                    sql = 'DELETE FROM yindex WHERE module=$(mod)s AND revision=%(rev)s AND organization=%(org)s'
-                    cur.execute(sql, {'mod': mname, 'rev': mrev,
-                                      'org': morg})
-                except MySQLdb.Error as e:
-                    LOGGER.error('Failed to delete {} from the index: {}'.format(
-                        mod, e.args[0]))
-            con.commit()
-            con.close()
-        except MySQLdb.Error as e:
-            LOGGER.error("Error connecting to DB: {}".format(e.args[0]))
+        es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
+        initialize_body = json.load(open('json/initialize_elasticsearch.json', 'r'))
+        initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
+        es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
+        es.indices.create(index='yindex', body=initialize_body, ignore=400)
+        logging.getLogger('elasticsearch').setLevel(logging.ERROR)
+        for mod in delete_cache:
+            mname = mod.split('@')[0]
+            mrev_org = mod.split('@')[1]
+            mrev = mrev_org.split('/')[0]
+            morg = '/'.join(mrev_org.split('/')[1:])
+
+            try:
+                dateutil.parser.parse(mrev)
+            except ValueError as e:
+                if mrev[-2:] == '29' and mrev[-5:-3] == '02':
+                    mrev = mrev.replace('02-29', '02-28')
+
+            try:
+                query = \
+                    {
+                        "query": {
+                            "bool": {
+                                "must": [{
+                                    "match_phrase": {
+                                        "module.keyword": {
+                                            "query": mname
+                                        }
+                                    }
+                                }, {
+                                    "match_phrase": {
+                                        "revision": {
+                                            "query": mrev
+                                        }
+                                    }
+                                }]
+                            }
+                        }
+                    }
+                es.delete_by_query(index='yindex', body=query, doc_type='modules', conflicts='proceed',
+                                   request_timeout=40)
+                query['query']['bool']['must'].append({
+                                    "match_phrase": {
+                                        "organization": {
+                                            "query": morg
+                                        }
+                                    }
+                                })
+                es.delete_by_query(index='module', body=query, doc_type='modules', conflicts='proceed',
+                                   request_timeout=40)
+            except NotFoundError as e:
+                pass
 
     if len(changes_cache) == 0:
         LOGGER.info("No module to be processed. Exiting.")
@@ -199,7 +229,6 @@ if __name__ == '__main__':
 
     LOGGER.info('Pulling latest yangModels/yang repository')
     pull(yang_models)
-    LOGGER.info('Latest yangModels/yang repository pulled')
 
     mod_args = []
     if type(changes_cache) is list:
@@ -215,9 +244,7 @@ if __name__ == '__main__':
             if not mod_path.startswith('/'):
                 mod_path = yang_models + '/' + mod_path
             mod_args.append(mod_path)
-    build_yindex.build_yindex(private_secret, ytree_dir, mod_args, yang_models,
-                              dbHost, dbPass, dbName, dbUser, lock_file_cron,
-                              my_uri, LOGGER, save_file_dir)
+    build_yindex.build_yindex(ytree_dir, mod_args, lock_file_cron, LOGGER, save_file_dir,
+                              es_host, es_port, es_protocol, threads)
     os.unlink(lock_file_cron)
-
 

@@ -49,8 +49,7 @@
             {% endif %}
         </div>
         <script>
-            var tableColumns = {{ search_columns|safe }}  
-            {#var tableColumns = JSON.parse('{{ new_columns }}');#}
+            var tableColumns = {{ search_columns|safe }};
             var prev_idx = -1;
             var dt;
             $.fn.dataTable.ext.search.push(function (settings, sdata, rindex, rdata, counter) {
@@ -82,11 +81,7 @@
             }
 
             $(document).ready(function () {
-                dt = $('#datatable').DataTable({
-                    "columnDefs": [
-                        {"type": "num", "targets": 8}
-                    ]
-                });
+                dt = $('#datatable').DataTable();
                 var newHtml = '<select id="column_filter" name="column_filter" onChange="do_search(this);"><option value="-1">Entire Table</option>';
                 $.each(tableColumns, function (key, val) {
                     newHtml += '<option value="' + key + '">' + val + '</option>';
@@ -107,36 +102,7 @@
             </tr>
             </thead>
             <tbody>
-            {% for result in results %}
-                <tr>
-                    <td>
-                        {#                TODO: this is link to entry description#}
-                        <a href="{% url "search:show_node" name=result.name path=result.path|norm_path revision=result.revision %}">{{ result.node_name }}</a>
-                    </td>
-                    <td>{{ result.revision }}</td>
-                    <td>{{ result.type }}</td>
-                    <td>{{ result.path }}</td>
-
-                    <td>{{ result.name }}<br/>
-
-                        <span style="font-size: small">(<a href="{% url "search:module_details" result.name %}"><img src="{% static "img/details.png" %}" border="0" title="Module Details for {{ result.name }}"> Module Details</a> |
-              <a href="{% url "search:yang_tree" result.name %}"><img border="0" src="{% static "img/leaf.png" %}" title="Tree View for {{ result.name }}">
-              Tree View</a>
-              |
-              <a href="{% url "search:impact_analysis" result.name %}"><img src="{% static "img/impact.png" %}" border="0" title="Impact Analysis for {{ result.name }}">
-                Impact Analysis</a>)</span></td>
-                    <td>{{ result.origin }}</td>
-                    <td>{{ result.organization }}</td>
-                    <td>{{ result.maturity }}</td>
-                    <td>{{ result.dependents }}</td>
-                    {% if result.compile_status %}
-                        <td>{{ result.compile_status }}</td>
-                    {% else %}
-                        <td>N/A</td>
-                    {% endif %}
-                    <td>{{ result.description }}</td>
-                </tr>
-            {% endfor %}
+            {{ results|search_results:search_columns|safe }}                             
             </tbody>
         </table>
     </div>
@@ -180,7 +146,7 @@
                                             <div class="checkbox">
                                                 <label for="regexp">
                                                     <input id="regexp" type="checkbox" name="regexp" style="margin-top: 0;"
-                                                           value="1"> Regular Expression
+                                                           value="regex"> Regular Expression
                                                 </label>
                                             </div>
                                         </td>
@@ -277,9 +243,38 @@
                                     {% endfor %}
                                     </tbody>
                                 </table>
+
+                                <label>Output Columns</label>
+                                <div class="checkbox">
+                                    <label for="headersAll">
+                                        <input type="checkbox" id="headersAll" name="headersAll" style="margin-top: 0;"
+                                               value="1"
+                                               checked> All
+                                    </label>
+                                </div>
+				<table class="table table-bordered">
+                                    <tbody>
+                                    {% for rows in search_columns_show %}
+                                        <tr>
+                                            {% for row in rows %}
+                                                <td>
+                                                    <div class="checkbox">
+                                                        <label for="header{{ row }}">
+                                                            <input id="header{{ row }}" type="checkbox" name="headersTypes[]"
+                                                                   class="yang-headers-select" style="margin-top: 0;"
+                                                                   value="{{ row }}"
+                                                                   checked> {{ row }}
+                                                        </label>
+                                                    </div>
+                                                </td>
+                                            {% endfor %}
+                                        </tr>
+                                    {% endfor %}
+                                    </tbody>
+                                </table>
                             </div>
                         </div>
-                        <div class="form-group">
+			<div class="form-group">
                             <input type="submit" name="submit" value="Search!" class="btn btn-primary">
                             <input type="reset" name="reset" value="Reset" class="btn btn-default">
                         </div>
@@ -289,10 +284,6 @@
         </div>
     </div>
 {% endif %}
-
-<!-- Matomo Image Tracker-->
-<img src="https://analytics.yangcatalog.org/piwik.php?idsite=1&amp;rec=1&amp;action_name=Index" style="border:0" alt="" />
-<!-- End Matomo -->
 
 </body>
 </html>
