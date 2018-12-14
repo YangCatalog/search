@@ -37,10 +37,10 @@ For example:
 
 **UWSGI**
 
-UWSGI can be run as an indepedant process or via the `emperor`mechanism.
+UWSGI can be run as an indepedent process or via the `emperor`mechanism.
 
 uwsgi can be run manually with command:
  `uwsgi --chdir=$PATH_TO_DIR --module=yang.wsgi:application --env DJANGO_SETTINGS_MODULE=yang.settings --socket :$SOCKET --home=$PATH_TO_VENV --logto=$PATH_TO_LOG`
 
-Alternatively, the django server can be run as a `vassal` of the `uwsgi emperor` by putting the yang-search.uwsgi.ini into the vassals directory (or creating a symbolic).
-The yang-search.uswgi.ini needs to be customized to the directory installation of course
+Alternatively, the django server can be run as a `vassal` of the `uwsgi emperor` by putting the `yang-search.uwsgi.ini-dist` (renamed into a .ini extension) into the vassals directory (or creating a symbolic).
+The `yang-search.uswgi.ini-dist` needs to be customized to the directory installation of course

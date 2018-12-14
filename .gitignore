@@ -27,3 +27,6 @@ migrations/
 admin/
 manage.py
 config.ini
+
+# Localized UWSGI vassal configuration
+yang-search.ini
