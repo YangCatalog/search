@@ -5,6 +5,12 @@
       "number_of_replicas": 2
     },
     "analysis": {
+      "filter":{
+        "synonym":{
+          "type":"synonym",
+          "synonyms_path":"thesaurus.conf"
+        }
+      },
       "tokenizer": {
         "my_tokenizer": {
           "type": "ngram",
@@ -16,10 +22,14 @@
         "my_analyzer_lowercase": {
           "tokenizer": "my_tokenizer",
           "filter": [
-            "lowercase"
+            "lowercase",
+            "synonym"
           ]
         },
         "my_analyzer_case_sensitive": {
+          "filter":[
+            "synonym"
+          ],
           "tokenizer": "my_tokenizer"
         }
       }
@@ -86,3 +96,4 @@
     }
   }
 }
+
