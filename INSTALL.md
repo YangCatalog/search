@@ -8,6 +8,10 @@ There is no more any SQL database involved in YANG search but rather elasticsear
 
 /var/yang/ytrees should contain one .json file per YANG module (with the tree information).
 
+##Pyang plugins
+
+YANG search relies on some `pyang` specific plugins which are in `search/scripts/pyang_plugin/`. Those files must be copied/linked as plugins in the `pyang` plugins directory which is usually something such as `/usr/local/lib/python*/dist-packages/pyang/plugins/`. 
+
 ##Cron
 
 There are no specific cron jobs.
