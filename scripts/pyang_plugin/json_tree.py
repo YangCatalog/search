@@ -154,7 +154,7 @@ def get_node(s, module, prefix, ctx):
     if s.keyword == 'list' and s.search_one('key') is not None:
         child['list_key'] = s.search_one('key').arg
 
-    child['path'] = statements.mk_path_str(s, True)
+    child['path'] = mk_path_str(s, True)
     child['schema_type'] = s.keyword
     child['options'] = options
 
@@ -313,3 +313,18 @@ def action_params(action):
             for o in outputs:
                 s['out'].append(o.arg)
     return s
+
+def mk_path_str(s, with_prefixes=False):
+    """Returns the XPath path of the node"""
+    if s.keyword in ['choice', 'case']:
+        return mk_path_str(s.parent, with_prefixes)
+    def name(s):
+        if with_prefixes:
+            return s.i_module.i_prefix + ":" + s.arg + "?" + s.keyword
+        else:
+            return s.arg
+    if s.parent.keyword in ['module', 'submodule']:
+        return "/" + name(s)
+    else:
+        p = mk_path_str(s.parent, with_prefixes)
+        return p + "/" + name(s)

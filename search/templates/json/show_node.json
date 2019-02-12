@@ -11,7 +11,7 @@
         },
         {
           "match_phrase": {
-            "path.keyword": {
+            "path": {
               "query": ""
             }
           }

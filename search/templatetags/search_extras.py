@@ -137,8 +137,11 @@ def search_results(results, search_columns):
         for result in results:
             html += '<tr>'
             if "Name" in search_columns:
+                path = result['path'].replace('?', '%3F')
+ #               for type_part in re.findall(r'\?[^/]*', result['path']):
+  #                  path = path.replace(type_part, '')
                 html += '<td> <a href="/yang-search/show_node/{}/{}/{}">{}</a></td>'\
-                    .format(result['name'], result['path'], result['revision'], result['node_name'])
+                    .format(result['name'], path, result['revision'], result['node_name'])
             if "Revision" in search_columns:
                 html += '<td>{}</td>'.format(result['revision'])
             if "Schema Type" in search_columns:
@@ -201,7 +204,7 @@ def print_cells(module_details):
         return
 
 
-def print_cell(value, key, name, pkey=''):
+def print_cell(value, key, name, pkey='', isDeviation=False):
     """
     Takes key and value, and based on their value, changes the way they appear
     in the final html list
@@ -211,6 +214,8 @@ def print_cell(value, key, name, pkey=''):
     :param pkey: primary key
     :return: one entry from html list
     """
+    if key == 'deviation':
+        isDeviation = True
     html = ''
     if not isinstance(value, list) and not isinstance(value, dict):
         if value == False:
@@ -225,7 +230,10 @@ def print_cell(value, key, name, pkey=''):
             for match in matches:
                 match = match[0]
                 nval = nval.replace(match, '<a href="mailto:{0}">{0}</a>'.format(match))
-        html += '<td>{}</td>'.format(nval)
+        if key == 'name' and isDeviation:
+            html += '<td> <a href="/yang-search/module_details/?module={0}">{0}</a></td>'.format(value)
+        else:
+            html += '<td>{}</td>'.format(nval)
     elif key == 'revision':
         html += '<td><div class="dropdown">'
         for nv in value:
@@ -260,7 +268,7 @@ def print_cell(value, key, name, pkey=''):
                 html += '<tr>'
                 html += '<td><b>{} : </b></td>'.format(nk)
 
-                html += print_cell(nv, nk, name, npk)
+                html += print_cell(nv, nk, name, npk, isDeviation)
                 html += '</tr>'
         else:
             i = 0
@@ -268,7 +276,7 @@ def print_cell(value, key, name, pkey=''):
                 nk = i
                 html += '<tr>'
                 html += '<td><b>{}: </b></td>'.format(nk)
-                html += print_cell(nv, str(nk), name, npk)
+                html += print_cell(nv, str(nk), name, npk, isDeviation)
                 i += 1
                 html += '</tr>'
         html += '</tbody>'

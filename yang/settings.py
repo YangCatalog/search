@@ -59,7 +59,8 @@ ALLOWED_HOSTS = [
     'yangcatalog.org',
     'www.yangcatalog.org',
     'new.yangcatalog.org',
-    'localhost'
+    'localhost',
+    'yang.amsl.com'
 ]
 
 # Application definition

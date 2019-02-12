@@ -139,7 +139,7 @@ def index_printer(stmt):
     rev = get_latest_revision(module)
     revision = ''
 
-    path = statements.mk_path_str(stmt, True)
+    path = mk_path_str(stmt, True)
     descr = stmt.search_one('description')
     dstr = ''
     if descr:
@@ -186,6 +186,21 @@ def index_printer(stmt):
                                             vals['description'], vals['properties'])
     vals['sort-hash-id'] = hashlib.sha256(text.encode('utf-8')).hexdigest()
     _values['yindex'].append(vals)
+
+def mk_path_str(s, with_prefixes=False):
+    """Returns the XPath path of the node"""
+    if s.keyword in ['choice', 'case']:
+        return mk_path_str(s.parent, with_prefixes)
+    def name(s):
+        if with_prefixes:
+            return s.i_module.i_prefix + ":" + s.arg + "?" + s.keyword
+        else:
+            return s.arg
+    if s.parent.keyword in ['module', 'submodule']:
+        return "/" + name(s)
+    else:
+        p = mk_path_str(s.parent, with_prefixes)
+        return p + "/" + name(s)
 
 def resolve_organization(module):
     if module.keyword == 'submodule':

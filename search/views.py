@@ -88,6 +88,7 @@ initialize_body_modules = json.load(open('search/templates/json/initialize_modul
 es.indices.create(index='yindex', body=initialize_body_yindex, ignore=400)
 es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
 logging.getLogger('elasticsearch').setLevel(logging.ERROR)
+api_prefix = config.get('Web-Section', 'my_uri')
 
 
 def index(request):
@@ -117,7 +118,7 @@ def index(request):
     ]
     post_json = {
         'filter': {
-            'module': [
+            'module-metadata': [
                 'name',
                 'revision',
                 'organization',
@@ -216,7 +217,7 @@ def show_node(request, name='', path='', revision=''):
             revision = revision.split('@')[1]
         query = json.load(open('search/templates/json/show_node.json', 'r'))
         query['query']['bool']['must'][0]['match_phrase']['module.keyword']['query'] = name
-        query['query']['bool']['must'][1]['match_phrase']['path.keyword']['query'] = path
+        query['query']['bool']['must'][1]['match_phrase']['path']['query'] = path
         query['query']['bool']['must'][2]['match_phrase']['revision']['query'] = revision
         hits = es.search(index='yindex', doc_type='modules', body=query)['hits']['hits']
         if len(hits) == 0:
@@ -267,7 +268,7 @@ def create_prev_next(module, rv):
         #    except IndexError as e:
         #        pass
         #    break
-        #prev = mod['revision']
+        # prev = mod['revision']
 
     return revisions
 
@@ -302,7 +303,7 @@ def module_details(request, module=''):
         logger.error(rv)
         org = rv_org['org']
         revisions = create_prev_next(module, rv)
-        url = 'https://yangcatalog.org/api/search/modules/' + module + ',' + rv + ',' + org
+        url = api_prefix + '/api/search/modules/' + module + ',' + rv + ',' + org
         response = requests.get(url, headers={'Content-type': 'application/json', 'Accept': 'application/json'})
         if response.text is not None:
             results = json.loads(response.text)['module']
@@ -344,10 +345,10 @@ def module_details(request, module=''):
         context['revision'] = rv
         context['organization'] = org
         context['mod_rev'] = '{}@{}'.format(module, rv)
-#        context['prev'] = prev
- #       context['next'] = nxt
-#        context['prev_text'] = '{}@{}'.format(module, prev)
- #       context['next_text'] = '{}@{}'.format(module, nxt)
+        #        context['prev'] = prev
+        #       context['next'] = nxt
+        #        context['prev_text'] = '{}@{}'.format(module, prev)
+        #       context['next_text'] = '{}@{}'.format(module, nxt)
         context['title'] = 'Module Details for {}@{}/{}'.format(module, rv, org)
     except Exception as e:
         context['title'] = title
@@ -389,7 +390,9 @@ def completions(request, type, pattern):
 
         completion['query']['bool']['must'][0]['term'] = {selector: pattern.lower()}
         completion['aggs']['groupby_module']['terms']['field'] = '{}.keyword'.format(selector)
-        rows = es.search(index='modules', doc_type='modules', body=completion, size=0)['aggregations']['groupby_module']['buckets']
+        rows = \
+        es.search(index='modules', doc_type='modules', body=completion, size=0)['aggregations']['groupby_module'][
+            'buckets']
 
         for row in rows:
             res.append(row['key'])
@@ -431,7 +434,7 @@ def yangsuite(request, module):
         module = module.split('@')[0]
         mod_obj = moduleFactory(module, rev_org['rev'], rev_org['org'], False, True)
         obj = fetch(mod_obj)
-            
+
         if obj.get('ys_url') is not None:
             url = obj['ys_url']
 
@@ -445,7 +448,7 @@ def fetch(mod_obj):
     :param mod_obj: module object
     :return: module with all arguments
     """
-    url = 'https://yangcatalog.org/api/search/modules/' + mod_obj['name'] + ',' + mod_obj['revision'] + ',' + mod_obj[
+    url = api_prefix + '/api/search/modules/' + mod_obj['name'] + ',' + mod_obj['revision'] + ',' + mod_obj[
         'organization']
     if mod_obj.get('yang_suite'):
         response = requests.get(url, headers={'Content-type': 'application/json', 'Accept': 'application/json',
@@ -467,7 +470,7 @@ def metadata_update(request):
     """
     Provides hyperlink for database update, on which we send requests.
     :param request: Array with arguments from rest request.
-    :return: calls scripts for database update and file generation 
+    :return: calls scripts for database update and file generation
     """
     config_path = '/etc/yangcatalog/yangcatalog.conf'
     config = configparser.ConfigParser()
@@ -530,7 +533,7 @@ def metadata_update(request):
     return HttpResponse(status=201)
 
 
-def yang_tree(request, module = ''):
+def yang_tree(request, module=''):
     """
     View for yang_tree.html webpage. Generates yang tree view of the module.
     :param request: Array with arguments from rest request.
@@ -607,7 +610,7 @@ def yang_tree(request, module = ''):
 
 def impact_analysis(request, module=''):
     """
-    View for impact_analysis.html 
+    View for impact_analysis.html
     :param request: Array with arguments from rest request.
     :param module: Module for which we are generating impact_analysis, this arg is only used
     when we are accessing webpage from link in search. Otherwise request arguments are used.
@@ -651,7 +654,7 @@ def impact_analysis(request, module=''):
                 recurse = int(request.GET['recursion'])
             except:
                 recurse = 0
-                
+
         if 'show_rfcs' not in request.GET and request.GET != {}:
             show_rfcs = False
         if 'show_subm' not in request.GET and request.GET != {}:
@@ -669,7 +672,7 @@ def impact_analysis(request, module=''):
                 for mod_obj in mod_objs:
                     if mod_obj.get('name') is not None:
                         m = mod_obj['name']
-                        
+
                         if mod_obj.get('maturity-level') != 'adopted' and mod_obj.get('maturity-level') != 'ratified':
                             continue
                         good_mods.append(m)
@@ -703,7 +706,7 @@ def impact_analysis(request, module=''):
             tbottlenecks.append(pair[0])
             found_bottleneck = True
             curr_count = pair[1]
-    
+
         for bn in tbottlenecks:
             found_dep = False
             for edge in edges:
@@ -716,7 +719,7 @@ def impact_analysis(request, module=''):
                         found_dep = True
             if not found_dep:
                 bottlenecks.append("node#mod_{}".format(bn))
-    
+
         num_legend_cols = math.ceil(len(found_orgs) / 6)
         if num_legend_cols < 1:
             num_legend_cols = 1
@@ -767,7 +770,7 @@ def search(post_json, search_term, alerts):
     """
     if search_term != '':
 
-        response = requests.post('https://yangcatalog.org/api/fast', json=post_json,
+        response = requests.post('{}/api/fast'.format(api_prefix), json=post_json,
                                  headers={'Content-type': 'application/json', 'Accept': 'application/json'})
         results = response.json().get('results')
 
@@ -863,9 +866,13 @@ def search(post_json, search_term, alerts):
                 results_context["description"] = description
             all_results.add(json.dumps(results_context))
         all_results_list = []
+        counter = 0
         for res in all_results:
             res = json.loads(res)
             all_results_list.append(res)
+            counter += 1
+            if counter == 10000:
+                break
         return all_results_list
     else:
         return ''
@@ -957,7 +964,7 @@ def get_rev_org_obj(module, alerts):
             return
         mobj = moduleFactory(modn, rev_org['rev'], rev_org['org'])
         try:
-            url = 'https://yangcatalog.org/api/search/modules/' + modn + ',' + rev_org['rev'] + ',' + rev_org['org']
+            url = api_prefix + '/api/search/modules/' + modn + ',' + rev_org['rev'] + ',' + rev_org['org']
             response = requests.get(url, headers={'Content-type': 'application/json', 'Accept': 'application/json'})
             results = json.loads(response.text).get('module')
             if results is not None:
@@ -1141,7 +1148,7 @@ def get_parent(mod_obj):
     try:
         bt = mod_obj.get('belongs-to')
         if not bt:
-            return mod_obj.get('name') 
+            return mod_obj.get('name')
         return bt
     except Exception as e:
         return mod_obj.get('name')
@@ -1150,7 +1157,7 @@ def get_parent(mod_obj):
 def is_submod(mod_obj):
     """
     Find out whether module has a parent or not.
-    :param mod_obj: module object 
+    :param mod_obj: module object
     :return: module status
     """
     try:
@@ -1168,7 +1175,7 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
     Builds graph for impact_analysis. takes module name, and mod_obj, which has all of the modules
     dependents and dependencies.
     Goes through both dependents and dependencies and adds them to output if they are
-    eligible for 
+    eligible for
     :param module: module name
     :param mod_obj: module object
     :param orgs: organizations array
@@ -1269,7 +1276,8 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                                            'objColor': mcolor, 'org': org.upper(), 'mat': maturity['level']}})
                 if recurse > 0 or recurse < 0:
                     r = recurse - 1
-                    build_graph(mod, mobj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, r, True, show_subm, show_dir)
+                    build_graph(mod, mobj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, r, True,
+                                show_subm, show_dir)
                 else:
                     document = get_doc(mobj)
                     nodes.append(
@@ -1454,7 +1462,7 @@ def moduleFactoryFromSearch(search):
     """
     mod_objs = []
     global seen_modules
-    url = 'https://yangcatalog.org/api/search/{}'.format(search)
+    url = '{}/api/search/{}'.format(api_prefix, search)
     response = requests.get(url, headers={'Content-type': 'application/json', 'Accept': 'application/json'})
     result = json.loads(response.text)
     for mod in result['yang-catalog:modules']['module']:
@@ -1515,10 +1523,10 @@ def impact_analysis_php(request):
     """
 
     # Get the full URL for impact_analysis
-#    base_url = reverse('impact_analysis')
-#    base_url = reverse(views.impact_analysis)
-#    base_url = reverse(impact_analysis)
-    base_url = 'https://yangcatalog.org/yang-search/impact_analysis/'
+    #    base_url = reverse('impact_analysis')
+    #    base_url = reverse(views.impact_analysis)
+    #    base_url = reverse(impact_analysis)
+    base_url = '{}/yang-search/impact_analysis/'.format(api_prefix)
     # More complex now... let's translate the query_string
     query_dict = dict()
     modtags = []
@@ -1546,3 +1554,4 @@ def impact_analysis_php(request):
     url = '{}?{}'.format(base_url, query_string)
     print('URL = ' + url)
     return redirect(url, permanent=False)
+
