@@ -12,6 +12,6 @@ Another PYANG plugin.
 
 Another PYANG plugin.
 
-## yang_catalog_index.py
+## yang_catalog_index_es.py
 
-This is a PYANG plugin to generate the SQL statements for Yang Search database. It must be installed in the PYANG plugin directory.
+This is a PYANG plugin to generate the elasticsearch statements for Yang Search database. It must be installed in the PYANG plugin directory.

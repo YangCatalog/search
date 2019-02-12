@@ -1,20 +1,22 @@
-*Installation*
+#Installation*
 
-**SQL Database**
+##Database
 
-Create a database in MySQL with read/write access for a user and execute the install.sql file (you can safely remove it after).
+There is no more any SQL database involved in YANG search but rather elasticsearch which must be installed.
 
-Be sure that /etc/yangcatalog.conf has the right information about MySQL database and credentials as well as the secret token for the metadata update.
-
-**Tree information**
+##Tree information
 
 /var/yang/ytrees should contain one .json file per YANG module (with the tree information).
 
-**Cron**
+##Pyang plugins
+
+YANG search relies on some `pyang` specific plugins which are in `search/scripts/pyang_plugin/`. Those files must be copied/linked as plugins in the `pyang` plugins directory which is usually something such as `/usr/local/lib/python*/dist-packages/pyang/plugins/`. 
+
+##Cron
 
 There are no specific cron jobs.
 
-**Django**
+##Django
 
 Django must be installed (including the Django table in the same database as the yang-search tables).
 
@@ -25,7 +27,7 @@ Ensure that your webserver:
 For example:
 ```
        location /yang-search/static {
-            alias /var/www/html/yang-search/static;
+            alias /home/yang/yang-search/search/static;
         }
 
         location /yang-search/ {
@@ -35,7 +37,7 @@ For example:
         }
 ```
 
-**UWSGI**
+##UWSGI
 
 UWSGI can be run as an indepedent process or via the `emperor`mechanism.
 
