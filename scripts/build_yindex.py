@@ -207,7 +207,11 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                         raise e
 
             with open('{}/{}@{}.json'.format(ytree_dir, name, revision), 'w') as f:
-                emit_tree([parsed_module], f, ctx)
+                try:
+                    emit_tree([parsed_module], f, ctx)
+                except:
+                    #create empty file so we still have access to that
+                    f.write("")
 
     except Exception as e:
         os.unlink(lock_file_cron)
