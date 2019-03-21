@@ -12,6 +12,8 @@
 # limitations under the License.
 
 from pyang import plugin, statements
+from datetime import datetime
+
 import json
 import optparse
 import re
@@ -155,6 +157,8 @@ def index_printer(stmt):
     except ValueError as e:
         if revision[-2:] == '29' and revision[-5:-3] == '02':
             revision = revision.replace('02-29', '02-28')
+    rev_parts = revision.split('-')
+    revision = datetime(int(rev_parts[0]), int(rev_parts[1]), int(rev_parts[2])).date().isoformat()
     for i in stmt.substmts:
         a = i.arg
         k = i.keyword

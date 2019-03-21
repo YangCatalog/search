@@ -22,6 +22,7 @@ import os
 import subprocess
 
 import dateutil.parser
+from datetime import datetime
 from elasticsearch import ConnectionError, ConnectionTimeout, Elasticsearch, NotFoundError
 from elasticsearch.helpers import parallel_bulk
 from pyang.plugins.json_tree import emit_tree
@@ -88,11 +89,15 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
             mods = [parsed_module]
 
             find_submodules(ctx, mods, parsed_module)
-            with open('temp.txt', 'w') as f:
-                ctx.opts.yang_index_make_module_table_es = True
-                ctx.opts.yang_index_no_schema_es = True
-                plugin = IndexerPlugin()
-                plugin.emit(ctx, [parsed_module], f)
+            try:
+                with open('temp.txt', 'w') as f:
+                    ctx.opts.yang_index_make_module_table = True
+                    ctx.opts.yang_index_no_schema = True
+                    plugin = IndexerPlugin()
+                    plugin.emit(ctx, [parsed_module], f)
+            except:
+                LOGGER.warning('Unable to pyang parse module {} skipping this module'.format(module))
+                continue
 
             with open('temp.txt', 'r') as f:
                 yindexes = json.load(f)
@@ -109,7 +114,8 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
             except ValueError as e:
                 if revision[-2:] == '29' and revision[-5:-3] == '02':
                     revision = revision.replace('02-29', '02-28')
-
+            rev_parts = revision.split('-')
+            revision = datetime(int(rev_parts[0]), int(rev_parts[1]), int(rev_parts[2])).date().isoformat()
 
             retry = 3
             while retry > 0:
@@ -121,11 +127,14 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                             r = '1970-01-01'
                         else:
                             r = rev
+
                         try:
                             dateutil.parser.parse(r)
                         except ValueError as e:
                             if r[-2:] == '29' and r[-5:-3] == '02':
                                 r = r.replace('02-29', '02-28')
+                        rev_parts = r.split('-')
+                        r = datetime(int(rev_parts[0]), int(rev_parts[1]), int(rev_parts[2])).date().isoformat()
                         try:
                             query = \
                                 {
@@ -166,6 +175,8 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                         if revision[-2:] == '29' and revision[-5:-3] == '02':
                             revision = revision.replace('02-29', '02-28')
 
+                    rev_parts = revision.split('-')
+                    revision = datetime(int(rev_parts[0]), int(rev_parts[1]), int(rev_parts[2])).date().isoformat()
                     query = \
                         {
                             "query": {
