@@ -300,7 +300,6 @@ def module_details(request, module=''):
         rv_org = get_rev_org(module, 1, alerts)
         module = module.split('@')[0]
         rv = rv_org['rev']
-        logger.error(rv)
         org = rv_org['org']
         revisions = create_prev_next(module, rv)
         url = api_prefix + '/api/search/modules/' + module + ',' + rv + ',' + org
@@ -695,7 +694,6 @@ def impact_analysis(request, module=''):
                                 recurse, False, show_subm, show_dir)
         if len(good_mods) > 0:
             title = 'YANG Impact Graph for Module(s): ' + ', '.join(good_mods)
-        logger.error(edge_counts)
         edge_counts = asort(edge_counts)
         curr_count = 0
         tbottlenecks = []
@@ -1198,7 +1196,6 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
         module = get_parent(mod_obj)
     elif show_subm:
         is_subm = is_submod(mod_obj)
-
     if nested and nseen.get(module) is not None:
         return
     if mod_obj.get('organization') is not None:
@@ -1291,9 +1288,11 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                 mobj = get_rev_org_obj(mod, alerts)
 
                 if show_subm:
-                    mod = get_parent(mobj)
+                    is_msubm = is_submod(mobj)
                 else:
                     is_msubm = is_submod(mobj)
+                    if is_msubm:
+                        continue
 
                 if eseen.get("mod_{}:mod_{}".format(mod, module)) is not None:
                     continue
@@ -1301,7 +1300,7 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                 if eseen.get("mod_{}:mod_{}".format(module, mod)) is not None:
                     alerts.append("Loop found {} <=> {}")
 
-                eseen["mod_{}:mod_{}"] = True
+                eseen["mod_{}:mod_{}".format(mod, module)] = True
                 maturity = get_maturity(mobj)
                 if maturity.get('olevel') == 'RATIFIED' and not show_rfcs:
                     continue
@@ -1332,9 +1331,9 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                         edges.append({'data': {'source': "mod_{}".format(mod), 'target': "mod_{}".format(module),
                                                'objColor': mcolor, 'org': org.upper(), 'mat': maturity['level']}})
 
-                if nested and (recurse > 0 or recurse < 0):
+                if recurse > 0:
                     r = recurse - 1
-                    # build_graph(mod, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, r, True)
+                    build_graph(mod, mobj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, r, True)
                 elif not nested:
                     document = get_doc(mobj)
                     nodes.append(
