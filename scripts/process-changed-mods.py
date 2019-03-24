@@ -114,6 +114,7 @@ if __name__ == '__main__':
     yang_models = config.get('Directory-Section', 'yang_models_dir')
     changes_cache_dir = config.get('Directory-Section', 'changes-cache')
     delete_cache_dir = config.get('Directory-Section', 'delete-cache')
+    temp_dir = config.get('Directory-Section', 'temp')
     lock_file = config.get('Directory-Section', 'lock')
     lock_file_cron = config.get('Directory-Section', 'lock-cron')
     ytree_dir = config.get('Directory-Section', 'json-ytree')
@@ -245,6 +246,6 @@ if __name__ == '__main__':
                 mod_path = yang_models + '/' + mod_path
             mod_args.append(mod_path)
     build_yindex.build_yindex(ytree_dir, mod_args, lock_file_cron, LOGGER, save_file_dir,
-                              es_host, es_port, es_protocol, threads)
+                              es_host, es_port, es_protocol, threads, temp_dir)
     os.unlink(lock_file_cron)
 

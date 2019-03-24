@@ -50,7 +50,7 @@ def __run_pyang_commands(commands, output_only=True, decode=True):
 
 
 def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
-                 es_host, es_port, es_protocol, threads):
+                 es_host, es_port, es_protocol, threads, temp_dir):
     es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
     initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
     initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
@@ -79,18 +79,18 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
             if parsed_module is None:
                 LOGGER.warning('Unable to pyang parse module {} skipping this module'.format(module))
                 continue
-            with open('temp.txt', 'w') as f:
+            with open('{}/emit_name_temp.txt'.format(temp_dir), 'w', encoding='utf-8') as f:
                 ctx.opts.print_revision = True
                 emit_name(ctx, [parsed_module], f)
-            with open('temp.txt', 'r') as f:
+            with open('{}/emit_name_temp.txt'.format(temp_dir), 'r', encoding='utf-8') as f:
                 name_revision = f.read().strip()
-            os.unlink('temp.txt')
+            os.unlink('{}/emit_name_temp.txt'.format(temp_dir))
 
             mods = [parsed_module]
 
             find_submodules(ctx, mods, parsed_module)
             try:
-                with open('temp.txt', 'w') as f:
+                with open('{}/emit_index_temp.txt'.format(temp_dir), 'w', encoding='utf-8') as f:
                     ctx.opts.yang_index_make_module_table = True
                     ctx.opts.yang_index_no_schema = True
                     plugin = IndexerPlugin()
@@ -99,9 +99,9 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                 LOGGER.warning('Unable to pyang parse module {} skipping this module'.format(module))
                 continue
 
-            with open('temp.txt', 'r') as f:
+            with open('{}/emit_index_temp.txt'.format(temp_dir), encoding='utf-8') as f:
                 yindexes = json.load(f)
-            os.unlink('temp.txt')
+            os.unlink('{}/emit_index_temp.txt'.format(temp_dir))
             name_revision = name_revision.split('@')
             if len(name_revision) > 1:
                 name = name_revision[0]
