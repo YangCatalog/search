@@ -21,7 +21,6 @@ from django.core.serializers.json import DjangoJSONEncoder
 from django.http import HttpResponse
 from django.shortcuts import redirect
 from Crypto.Hash import SHA, HMAC
-import datetime
 import configparser
 import math
 import requests
@@ -166,17 +165,16 @@ def index(request):
         for version in versions:
             post_json['yang-versions'].append(version)
 
-    if 'schemaAll' not in request.GET:
+    if 'schemaTypes[]' in request.GET:
+        types = request.GET.getlist('schemaTypes[]')
+        post_json['schema-types'] = []
+        for one_type in types:
+            post_json['schema-types'].append(one_type)
+    else:
         post_json['schema-types'] = ['typedef', 'grouping', 'feature',
                                      'identity', 'extension', 'rpc',
                                      'container', 'list', 'leaf-list',
                                      'leaf', 'notification', 'action']
-    else:
-        if 'schemaTypes[]' in request.GET:
-            types = request.GET.getlist('schemaTypes[]')
-            post_json['schema-types'] = []
-            for one_type in types:
-                post_json['schema-types'].append(one_type)
 
     if 'headersAll' in request.GET:
         post_json['headers'] = search_columns
@@ -189,6 +187,7 @@ def index(request):
             search_columns = post_json['headers']
 
     alerts = []
+    logger.error(post_json)
     output = search(post_json, search_term, alerts)
     context = dict()
     context.update({'search_term': search_term, 'search_fields': search_fields,
@@ -622,6 +621,8 @@ def impact_analysis(request, module=''):
     alerts = []
     title = 'Empty Impact Graph'
     context['title'] = title
+    colors = ['#FFC20A', '#0C7BDC', '#994F00', '#E1BE6A', '#E66100', '#ff0000', '#4B0092', '#827F1C', '#D35FB7',
+              '#000000', '#117733', '#BB4F54', '#656565']
     try:
         nodes = []
         edges = []
@@ -677,7 +678,7 @@ def impact_analysis(request, module=''):
                         good_mods.append(m)
                         mods.append(m)
                         build_graph(m, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs,
-                                    recurse, False, show_subm, show_dir)
+                                    colors, recurse, False, show_subm, show_dir)
         else:
             for m in mods:
                 nmodule = os.path.basename(m)
@@ -691,7 +692,7 @@ def impact_analysis(request, module=''):
                     m = m.split('@')[0]
                     good_mods.append(m)
                     build_graph(m, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs,
-                                recurse, False, show_subm, show_dir)
+                                colors, recurse, False, show_subm, show_dir)
         if len(good_mods) > 0:
             title = 'YANG Impact Graph for Module(s): ' + ', '.join(good_mods)
         edge_counts = asort(edge_counts)
@@ -1167,8 +1168,8 @@ def is_submod(mod_obj):
         return False
 
 
-def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, recurse=0,
-                nested=False, show_subm=True, show_dir='both'):
+def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, colors,
+                recurse=0, nested=False, show_subm=True, show_dir='both'):
     """
     Builds graph for impact_analysis. takes module name, and mod_obj, which has all of the modules
     dependents and dependencies.
@@ -1215,7 +1216,7 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
         if nested and mmat.get('olevel') == 'RATIFIED' and not show_rfcs:
             return
 
-        color = color_gen(org)
+        color = color_gen(org, colors)
         if found_mats.get(mmat['level']) is None:
             found_mats[mmat['level']] = [module]
         else:
@@ -1253,7 +1254,7 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                 if not org:
                     org = 'UNKNOWN'
 
-                mcolor = color_gen(org)
+                mcolor = color_gen(org, colors)
 
                 if found_mats.get(maturity['level']) is None:
                     found_mats[maturity['level']] = [mod]
@@ -1273,8 +1274,8 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
                                            'objColor': mcolor, 'org': org.upper(), 'mat': maturity['level']}})
                 if recurse > 0 or recurse < 0:
                     r = recurse - 1
-                    build_graph(mod, mobj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, r, True,
-                                show_subm, show_dir)
+                    build_graph(mod, mobj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs,
+                                colors, r, True, show_subm, show_dir)
                 else:
                     document = get_doc(mobj)
                     nodes.append(
@@ -1319,7 +1320,7 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
 
                 found_orgs[org] = True
 
-                mcolor = color_gen(org)
+                mcolor = color_gen(org, colors)
                 if maturity['olevel'] == 'INITIAL' or maturity['olevel'] == 'ADOPTED':
                     if not edge_counts.get(mod):
                         edge_counts[mod] = 1
@@ -1333,7 +1334,8 @@ def build_graph(module, mod_obj, orgs, nodes, edges, edge_counts, nseen, eseen, 
 
                 if recurse > 0:
                     r = recurse - 1
-                    build_graph(mod, mobj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, r, True)
+                    build_graph(mod, mobj, orgs, nodes, edges, edge_counts, nseen, eseen, alerts, show_rfcs, colors,
+                                r, True)
                 elif not nested:
                     document = get_doc(mobj)
                     nodes.append(
@@ -1384,7 +1386,7 @@ def get_compile_status(mod_obj):
         return ''
 
 
-def color_gen(org):
+def color_gen(org, colors):
     """
     Color generator for impact_analysis website, dependent organization and it's arguments.
     Makes request to local database
@@ -1414,43 +1416,46 @@ def color_gen(org):
         except Exception as e:
             NUM_STEPS = 33
             raise Exception(e)
-    r = -1
-    g = -1
-    b = -1
-    h = CUR_STEP / NUM_STEPS
-    i = int(h * 6)
-    f = h * 6 - i
-    q = 1 - f
-    result = i % 6
-    if result == 0:
-        r = 1
-        g = f
-        b = 0
-    elif result == 1:
-        r = q
-        g = 1
-        b = 0
-    elif result == 2:
-        r = 0
-        g = 1
-        b = f
-    elif result == 3:
-        r = 0
-        g = q
-        b = 1
-    elif result == 4:
-        r = f
-        g = 0
-        b = 1
-    elif result == 5:
-        r = 1
-        g = 0
-        b = q
-    c = '#' + ('00' + hex(int(r * 255)))[-2:] + ('00' + hex(int(g * 255)))[-2:] + ('00' + hex(int(b * 255)))[-2:]
-    c = c.replace('x', '0')
-    ORG_CACHE[org] = c
+    if len(colors) != 0:
+        ORG_CACHE[org] = colors.pop()
+    else:
+        r = -1
+        g = -1
+        b = -1
+        h = CUR_STEP / NUM_STEPS
+        i = int(h * 6)
+        f = h * 6 - i
+        q = 1 - f
+        result = i % 6
+        if result == 0:
+            r = 1
+            g = f
+            b = 0
+        elif result == 1:
+            r = q
+            g = 1
+            b = 0
+        elif result == 2:
+            r = 0
+            g = 1
+            b = f
+        elif result == 3:
+            r = 0
+            g = q
+            b = 1
+        elif result == 4:
+            r = f
+            g = 0
+            b = 1
+        elif result == 5:
+            r = 1
+            g = 0
+            b = q
+        c = '#' + ('00' + hex(int(r * 255)))[-2:] + ('00' + hex(int(g * 255)))[-2:] + ('00' + hex(int(b * 255)))[-2:]
+        c = c.replace('x', '0')
+        ORG_CACHE[org] = c
     CUR_STEP += 1
-    return c
+    return ORG_CACHE[org]
 
 
 def moduleFactoryFromSearch(search):
@@ -1553,4 +1558,5 @@ def impact_analysis_php(request):
     url = '{}?{}'.format(base_url, query_string)
     print('URL = ' + url)
     return redirect(url, permanent=False)
+
 
