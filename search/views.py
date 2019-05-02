@@ -516,7 +516,11 @@ def metadata_update(request):
         for mname, mpath in js['modules-to-index'].items():
             changes_cache[mname] = mpath
         for mname in js['modules-to-delete']:
-            if [k for k, v in delete_cache.items() if v == mname][0]:
+            exists = False
+            for existing in delete_cache:
+                if mname == existing:
+                    exists = True
+            if not exists:
                 delete_cache.append(mname)
         fd = open(changes_cache_dir, 'w')
         fd.write(json.dumps(changes_cache))

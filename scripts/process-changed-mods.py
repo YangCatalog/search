@@ -171,11 +171,14 @@ if __name__ == '__main__':
 
     if len(delete_cache) > 0:
         es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
-        initialize_body = json.load(open('json/initialize_elasticsearch.json', 'r'))
+        initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
         initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
+
+        es.indices.create(index='yindex', body=initialize_body_yindex, ignore=400)
         es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
-        es.indices.create(index='yindex', body=initialize_body, ignore=400)
+
         logging.getLogger('elasticsearch').setLevel(logging.ERROR)
+
         for mod in delete_cache:
             mname = mod.split('@')[0]
             mrev_org = mod.split('@')[1]
