@@ -221,9 +221,11 @@ if __name__ == '__main__':
                                         }
                                     }
                                 })
-                es.delete_by_query(index='module', body=query, doc_type='modules', conflicts='proceed',
+                LOGGER.info('deleting {}'.format(query))
+                es.delete_by_query(index='modules', body=query, doc_type='modules', conflicts='proceed',
                                    request_timeout=40)
             except NotFoundError as e:
+                LOGGER.warn('module not found {}'.format(e))
                 pass
 
     if len(changes_cache) == 0:

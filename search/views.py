@@ -496,7 +496,7 @@ def metadata_update(request):
             raise Exception('Invalid message signature')
 
         changes_cache = dict()
-        delete_cache = dict()
+        delete_cache = []
         if os.path.exists(changes_cache_dir) and os.path.getsize(changes_cache_dir) > 0:
             f = open(changes_cache_dir)
             changes_cache = json.load(f)
@@ -508,7 +508,7 @@ def metadata_update(request):
 
         js = json.loads(body_unicode)
         if js.get('modules-to-index') is None:
-            js['modules-to-index'] = []
+            js['modules-to-index'] = {}
 
         if js.get('modules-to-delete') is None:
             js['modules-to-delete'] = []

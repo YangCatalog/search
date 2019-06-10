@@ -1,6 +1,7 @@
 {
   "settings": {
     "index": {
+      "blocks": {"read_only_allow_delete": "false"},
       "number_of_shards": 3,
       "number_of_replicas": 2
     },

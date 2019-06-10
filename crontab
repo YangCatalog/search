@@ -1,0 +1,11 @@
+MAILTO=evyncke@cisco.com,miroslav.kovac@pantheon.tech
+SHELL=/bin/bash
+#
+# For more information see the manual pages of crontab(5) and cron(8)
+#
+# m h  dom mon dow   command
+#
+# Yang Search database maintenance
+#
+*/3 * * * * (cd ~ ; source bin/activate ; cd scripts ; export PYTHONPATH=${PYTHONPATH}:/search ; python process-changed-mods.py)
+
