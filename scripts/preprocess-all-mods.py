@@ -1,6 +1,7 @@
 #!/usr/bin/env python
 #
 # Author 2018 Eric Vyncke, evyncke@cisco.com
+# Copyright The IETF Trust 2019, All Rights Reserved
 # Copyright Cisco and its affiliates
 #
 # All rights reserved.

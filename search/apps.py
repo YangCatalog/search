@@ -1,6 +1,7 @@
+# Copyright The IETF Trust 2019, All Rights Reserved
 # Copyright 2018 Cisco and its afficiliates
 # 
-# Authors Joe Clarke jclarke@cisco.com and Tomás Markovic <Tomas.Markovic@pantheon.tech> for the Python version
+# Authors Joe Clarke jclarke@cisco.com and Tomï¿½s Markovic <Tomas.Markovic@pantheon.tech> for the Python version
 # 
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.

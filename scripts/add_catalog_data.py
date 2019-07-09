@@ -1,5 +1,6 @@
 #!/usr/bin/env python
 #
+# Copyright The IETF Trust 2019, All Rights Reserved
 # Copyright (c) 2016-2017  Joe Clarke <jclarke@cisco.com>
 # All rights reserved.
 #

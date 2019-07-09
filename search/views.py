@@ -1,3 +1,4 @@
+# Copyright The IETF Trust 2019, All Rights Reserved
 # Copyright 2018 Cisco and its afficiliates
 # 
 # Authors Joe Clarke jclarke@cisco.com and Tomas Markovic <Tomas.Markovic@pantheon.tech> for the Python version
