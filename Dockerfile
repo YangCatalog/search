@@ -1,5 +1,7 @@
 FROM python:3
+ARG YANG_ID_GID
 
+ENV YANG_ID_GID "$YANG_ID_GID"
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONUNBUFFERED=1
 
 EXPOSE 8005
@@ -12,7 +14,7 @@ RUN apt-get -y install cron \
   && apt-get autoremove -y
 
 RUN groupadd -r yang \
-  && useradd --no-log-init -r -g yang -u 1016 -d $VIRTUAL_ENV yang \
+  && useradd --no-log-init -r -g yang -u ${YANG_ID_GID} -d $VIRTUAL_ENV yang \
   && pip install virtualenv \
   && virtualenv --system-site-packages $VIRTUAL_ENV \
   && mkdir /etc/yangcatalog
@@ -36,7 +38,7 @@ COPY scripts/pyang_plugin/yang_catalog_index_es.py search/lib/python3.7/site-pac
 
 RUN chown yang:yang /etc/cron.d/elastic-cron
 
-USER 1016:0
+USER ${YANG_ID_GID}:0
 
 # Apply cron job
 RUN crontab /etc/cron.d/elastic-cron
