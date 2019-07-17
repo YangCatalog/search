@@ -1061,7 +1061,7 @@ def get_type_str(json):
     return type_str
 
 
-def build_tree(jsont, module):
+def build_tree(jsont, module, pass_on_schemas=None):
     """
     Builds data for yang_tree.html, takes json and recursively writes out it's children.
     :param jsont: input json
@@ -1086,10 +1086,13 @@ def build_tree(jsont, module):
         'status': '',
         'path': '',
     }
+    if pass_on_schemas is None:
+        pass_on_schemas = []
     if jsont.get('name') == module:
         node['data']['schema'] = 'module'
     elif jsont.get('schema_type') is not None:
         node['data']['schema'] = jsont['schema_type']
+        pass_on_schemas.append(jsont['schema_type'])
     if jsont.get('type') is not None:
         node['data']['type'] = jsont['type']
         node['data']['type_title'] = jsont['type']
@@ -1108,17 +1111,29 @@ def build_tree(jsont, module):
     if jsont.get('status') is not None:
         node['data']['status'] = jsont['status']
     if jsont.get('path') is not None:
-        node['data']['path'] = jsont['path']
+        path_list = jsont['path'].split('/')[1:]
+        path = ''
+        for path_part in path_list:
+            path = '{}/{}'.format(path, path_part.split('?')[0])
+        node['data']['path'] = path
     if jsont['name'] != module and jsont.get('children') is None or len(jsont['children']) == 0:
         node['icon'] = 'glyphicon glyphicon-leaf'
         if jsont.get('path') is not None:
-            node['a_attr']['href'] = "show_node/{}/{}".format(module, jsont['path'])
+            path_list = jsont['path'].split('/')[1:]
+            path = ''
+            for schema in enumerate(pass_on_schemas):
+                path = '{}{}%3F{}/'.format(path, path_list[schema[0]].split('?')[0], schema[1])
+            node['a_attr']['href'] = "show_node/{}/{}".format(module, path)
+            pass_on_schemas.pop()
+            logger.error('{}'.format(pass_on_schemas))
         node['a_attr']['class'] = 'nodeClass'
         node['a_attr']['style'] = 'color: #00e;'
     elif jsont.get('children') is not None:
         node['children'] = []
         for child in jsont['children']:
-            node['children'].append(build_tree(child, module))
+            node['children'].append(build_tree(child, module, pass_on_schemas))
+        if len(pass_on_schemas) != 0:
+            pass_on_schemas.pop()
 
     return node
 
