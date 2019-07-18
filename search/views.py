@@ -188,7 +188,7 @@ def index(request):
             search_columns = post_json['headers']
 
     alerts = []
-    logger.error(post_json)
+    logger.debug(post_json)
     output = search(post_json, search_term, alerts)
     context = dict()
     context.update({'search_term': search_term, 'search_fields': search_fields,
@@ -1125,7 +1125,6 @@ def build_tree(jsont, module, pass_on_schemas=None):
                 path = '{}{}%3F{}/'.format(path, path_list[schema[0]].split('?')[0], schema[1])
             node['a_attr']['href'] = "show_node/{}/{}".format(module, path)
             pass_on_schemas.pop()
-            logger.error('{}'.format(pass_on_schemas))
         node['a_attr']['class'] = 'nodeClass'
         node['a_attr']['style'] = 'color: #00e;'
     elif jsont.get('children') is not None:

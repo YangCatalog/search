@@ -165,9 +165,15 @@ STATICFILES_DIRS = (
 
 LOGGING_CONFIG = None
 
-LOGGING = {
+logging.config.dictConfig({
     'version': 1,
     'disable_existing_loggers': False,
+    'formatters': {
+        'console': {
+            # exact format is not important, this is the minimum information
+            'format': '%(asctime)s %(name)-12s:%(lineno)d %(levelname)-8s %(message)s'
+        },
+    },
     'handlers': {
         'file': {
             'level': 'DEBUG',
@@ -177,20 +183,20 @@ LOGGING = {
         'console': {
             'level': 'DEBUG',
             'class': 'logging.StreamHandler',
-            'filename': '/yang_search_debug.log',
+            'formatter': 'console',
         },
     },
     'loggers': {
         'django': {
-            'handlers': ['file'],
+            'handlers': ['console', 'file'],
             'level': 'DEBUG',
             'propagate': True,
         },
         'search': {
-            'handlers': ['file', 'console'],
+            'handlers': ['console'],
             'level': 'DEBUG',
             'propagate': True,
         },
     },
 
-}
+})
