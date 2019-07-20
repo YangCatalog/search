@@ -73,12 +73,16 @@ def emit_tree(modules, fd, ctx):
             subm = ctx.get_module(i.arg)
             if subm is not None:
                 mods.append(subm)
+        maugs = []
         for m in mods:
             for augment in m.search('augment'):
                 if (hasattr(augment.i_target_node, 'i_module') and
                         augment.i_target_node.i_module not in modules + mods):
-                    mod_out['augments'] = get_children(
-                        augment.i_children, module, ' ', ctx)
+                    maugs.append(get_children(
+                        augment.i_children, module, ' ', ctx))
+
+        if len(maugs) > 0:
+            mod_out['augments'] = maugs
 
         rpcs = module.search('rpc')
         if len(rpcs) > 0:
