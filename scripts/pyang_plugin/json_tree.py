@@ -79,7 +79,7 @@ def emit_tree(modules, fd, ctx):
                 if (hasattr(augment.i_target_node, 'i_module') and
                         augment.i_target_node.i_module not in modules + mods):
                     maugs.append(get_children(
-                        augment.i_children, module, ' ', ctx))
+                        augment.i_children, module, ' ', ctx)[0])
 
         if len(maugs) > 0:
             mod_out['augments'] = maugs
