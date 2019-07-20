@@ -590,6 +590,7 @@ def yang_tree(request, module=''):
                         if json_tree.get('augments') is not None:
                             augments = dict()
                             augments['name'] = json_tree['prefix'] + ':augments'
+                            augments['children'] = []
                             for aug in json_tree.get('augments'):
                                 augments['children'].append(aug)
 
