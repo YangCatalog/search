@@ -590,7 +590,9 @@ def yang_tree(request, module=''):
                         if json_tree.get('augments') is not None:
                             augments = dict()
                             augments['name'] = json_tree['prefix'] + ':augments'
-                            augments['children'] = json_tree['augments']
+                            for aug in json_tree.get('augments'):
+                                augments['children'].append(aug)
+
                             jstree_json['data'].append(build_tree(augments, modn))
                 except Exception as e:
                     alerts.append("Failed to read YANG tree data for {}, {}".format(module, e))
