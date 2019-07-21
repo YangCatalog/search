@@ -72,13 +72,13 @@
                             {header: '<b>Path</b>', value: 'path'},
                         ]
                     },
-                    core: {{ jstree_json|safe }}}).on("select_cell.jstree-grid", function (e, data) {
-		      if (data.column == '<b>Element</b> &nbsp;&nbsp;<a href="#" onClick="expandTree();">[+] Expand All</a> <a href="#" onClick="collapseAll();">[-] Collapse All</a>') {
-                          window.location.href = data.node.a_attr.href;
-		      }
- 
-                });
+                    core: {{ jstree_json|safe }}});
+
+                $('#yangtree li').on('click', 'a', function() {
+	            document.location.href = this;
+	        });
             });
+
 
             function expandTree() {
                 $('#yangtree').jstree('open_all');
