@@ -80,11 +80,12 @@
                     },
                     core: {{ jstree_json|safe }}});
 
-                $('#yangtree li').on('click', 'a', function() {
-	            document.location.href = this;
-	        });
             });
 
+
+            $('#yangtree').on('click', 'a', function() {
+	        document.location.href = this;
+	    });
 
             function expandTree() {
                 $('#yangtree').jstree('open_all');
