@@ -354,19 +354,24 @@
                     </div>
                 </div>
             </div>
-
         {% endif %}
-        {% for alert in alerts %}
-            <div class="row">
-                <div class="col-sm-8">
-                    <div class="alert alert-danger alert-dismissible" role="alert">
-                        <button type="button" class="close" data-dismiss="alert" aria-label="Close">
-                            <span aria-hidden="true">&times;</span></button>
-                        <strong>ERROR!</strong> {{ alert }}
+        {% if alerts|length > 0 %}
+            <button type="button" class="btn btn-info" data-toggle="collapse" data-target="#err">Click to show {{alerts|length}} of errors</button>
+                <div  class="collapse" id="err">
+            {% for alert in alerts %}
+                <div class="row">
+                    <div class="col-sm-8">
+                        <div class="alert alert-danger alert-dismissible" role="alert">
+                            <button type="button" class="close" data-dismiss="alert" aria-label="Close">
+                                <span aria-hidden="true">&times;</span></button>
+                            <strong>ERROR!</strong> {{ alert }}
+                        </div>
                     </div>
                 </div>
-            </div>
-        {% endfor %}
+            {% endfor %}
+              </div>
+        {% endif %}
+
 
     </div>
     <div class="page-header">
