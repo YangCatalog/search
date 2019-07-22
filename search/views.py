@@ -1095,7 +1095,8 @@ def build_tree(jsont, module, pass_on_schemas=None):
         node['data']['schema'] = 'module'
     elif jsont.get('schema_type') is not None:
         node['data']['schema'] = jsont['schema_type']
-        pass_on_schemas.append(jsont['schema_type'])
+        if jsont['schema_type'] not in ['choice', 'case']:
+            pass_on_schemas.append(jsont['schema_type'])
     if jsont.get('type') is not None:
         node['data']['type'] = jsont['type']
         node['data']['type_title'] = jsont['type']
