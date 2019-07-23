@@ -1124,7 +1124,7 @@ def build_tree(jsont, module, pass_on_schemas=None, augments=False):
         node['icon'] = 'glyphicon glyphicon-leaf'
         if jsont.get('path') is not None:
             if augments:
-                node['a_attr']['href'] = "show_node/{}/{}".format(module, jsont['path'])
+                node['a_attr']['href'] = "show_node/{}/{}".format(module, jsont['path'].replace('?', '%3F'))
             else:
                 path_list = jsont['path'].split('/')[1:]
                 path = ''
