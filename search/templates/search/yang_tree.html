@@ -60,6 +60,8 @@
         <i>(click cells to copy contents to clipboard)</i>
     </div>
     <div id="yangtree"></div>
+    <div id="copy_pop" style="display: none; position: absolute;
+	     background: #ccc;"></div>
     <script>
       // Taken from https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
       function copyToClipboard(text) {
@@ -128,13 +130,16 @@
 
       });
 
-
       $('#yangtree').on('click', 'a', function() {
         document.location.href = this;
       });
 
       $('#yangtree').on('select_cell.jstree-grid', function(event, data) {
-        copyToClipboard(data.value);
+        res = copyToClipboard(data.value);
+	if (res) {
+	  $('#copy_pop').css({left: event.pageX + 1, top: event.pageY
+	    + 1}).show(300).fadeOut('slow');
+	}
       });
 
       function expandTree() {
