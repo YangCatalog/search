@@ -61,7 +61,7 @@
     </div>
     <div id="yangtree"></div>
     <div id="copy_pop" style="display: none; position: absolute;
-	     background: #ccc;">Copied!</div>
+	     background: #ccc; z-index: 0;">Copied!</div>
     <script>
       var pageX;
       var pageY;
@@ -146,7 +146,7 @@
         var res = copyToClipboard(data.value);
 	if (res !== false) {
 	  $('#copy_pop').css({left: pageX + 1, top: pageY
-	    + 1}).show(300).fadeOut('slow');
+	    + 1}).show(300).fadeOut(3000);
 	}
       });
 
