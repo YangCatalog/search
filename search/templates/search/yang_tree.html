@@ -63,6 +63,9 @@
     <div id="copy_pop" style="display: none; position: absolute;
 	     background: #ccc;">Copied!</div>
     <script>
+      var pageX;
+      var pageY;
+
       // Taken from https://stackoverflow.com/questions/400212/how-do-i-copy-to-the-clipboard-in-javascript
       function copyToClipboard(text) {
         if (window.clipboardData && window.clipboardData.setData) {
@@ -130,6 +133,11 @@
 
       });
 
+      $(document).mousemove(function(e) {
+	pageX = e.pageX;
+	pageY = e.pageY;
+      });
+
       $('#yangtree').on('click', 'a', function() {
         document.location.href = this;
       });
@@ -137,7 +145,7 @@
       $('#yangtree').on('select_cell.jstree-grid', function(event, data) {
         var res = copyToClipboard(data.value);
 	if (res !== false) {
-	  $('#copy_pop').css({left: event.pageX + 1, top: event.pageY
+	  $('#copy_pop').css({left: pageX + 1, top: pageY
 	    + 1}).show(300).fadeOut('slow');
 	}
       });
