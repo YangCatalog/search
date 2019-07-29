@@ -135,8 +135,8 @@
       });
 
       $('#yangtree').on('select_cell.jstree-grid', function(event, data) {
-        res = copyToClipboard(data.value);
-	if (res) {
+        var res = copyToClipboard(data.value);
+	if (res !== false) {
 	  $('#copy_pop').css({left: event.pageX + 1, top: event.pageY
 	    + 1}).show(300).fadeOut('slow');
 	}
