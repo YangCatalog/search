@@ -1119,7 +1119,8 @@ def build_tree(jsont, module, pass_on_schemas=None, augments=False):
         path = ''
         for path_part in path_list:
             path = '{}/{}'.format(path, path_part.split('?')[0])
-        node['data']['path'] = path.replace('/', '/{}:'.format(module), 1)
+        node['data']['path'] = path
+        node['data']['sensor_path'] = path.replace('/', '/{}:'.format(module), 1)
     if jsont['name'] != module and jsont.get('children') is None or len(jsont['children']) == 0:
         node['icon'] = 'glyphicon glyphicon-leaf'
         if jsont.get('path') is not None:
