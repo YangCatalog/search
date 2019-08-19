@@ -17,8 +17,10 @@
         color: #228b22;
     }
 
-    .jstree-grid-cell {
+    .path-class {
+      width: calc(100% - (24px + 1px + 4px));
       text-overflow: ellipsis;
+      overflow: hidden;
     }
   </style>
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -130,12 +132,16 @@
               {
                 header: '<b>Path</b>',
                 maxWidth: 50,
-                value: 'path'
+                width: 50,
+                value: 'path',
+                valueClass: 'path_class'
               },
               {
                 header: '<b>Sensor Path</b>',
                 maxWidth: 50,
-                value: 'sensor_path'
+                width: 50,
+                value: 'sensor_path',
+                valueClass: 'path_class'
               }
             ]
           },
