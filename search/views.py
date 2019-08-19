@@ -1088,6 +1088,7 @@ def build_tree(jsont, module, pass_on_schemas=None, augments=False):
         'opts': '',
         'status': '',
         'path': '',
+        'path_class': 'path-class'
     }
     if pass_on_schemas is None:
         pass_on_schemas = []

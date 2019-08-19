@@ -15,7 +15,18 @@
 
     a.nodeClass i {
         color: #228b22;
-    }</style>
+    }
+
+    .jstree-grid-cell {
+        text-overflow: ellipsis;
+    }
+
+    .path-class {
+      width: calc(100% - (24px + 1px + 4px));
+      text-overflow: ellipsis;
+      overflow: hidden;
+    }
+  </style>
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <script type="text/javascript" src="//cdnjs.cloudflare.com/ajax/libs/jquery/1.12.4/jquery.min.js" integrity="sha256-ZosEbRLbNQzLpnKIkEdrPv7lOy9C27hHQ+Xp8a4MxAQ=" crossorigin="anonymous"></script>
   <script src="https://cdnjs.cloudflare.com/ajax/libs/twitter-bootstrap/3.3.7/js/bootstrap.min.js" integrity="sha384-Tc5IQib027qvyjSMfHjOMaLkfuWVxZxUPnCJA7l2mCWNIpG9mGCD8wGNIcPD7Txa" crossorigin="anonymous"></script>
@@ -124,13 +135,17 @@
               },
               {
                 header: '<b>Path</b>',
-                maxWidth: 50,
-                value: 'path'
+                maxWidth: 200,
+                width: 200,
+                value: 'path',
+                valueClass: 'path_class'
               },
               {
                 header: '<b>Sensor Path</b>',
-                maxWidth: 50,
-                value: 'sensor_path'
+                maxWidth: 200,
+                width: 200,
+                value: 'sensor_path',
+                valueClass: 'path_class'
               }
             ]
           },
