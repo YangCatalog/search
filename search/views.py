@@ -563,7 +563,8 @@ def yang_tree(request, module=''):
 
             modn = module.split('@', 1)[0]
             module = "{}@{}".format(modn, mod_obj['rev'])
-            f = '/var/yang/ytrees/{}.json'.format(module)
+            ytree_dir = config.get('Directory-Section', 'json-ytree')
+            f = '{}/{}.json'.format(ytree_dir, module)
             maturity = get_maturity(mod_obj)
             if os.path.isfile(f):
                 try:
