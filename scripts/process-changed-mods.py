@@ -191,6 +191,8 @@ if __name__ == '__main__':
             except ValueError as e:
                 if mrev[-2:] == '29' and mrev[-5:-3] == '02':
                     mrev = mrev.replace('02-29', '02-28')
+                else:
+                    mrev = '1970-01-01'
 
             try:
                 query = \
@@ -252,6 +254,7 @@ if __name__ == '__main__':
                 mod_path = yang_models + '/' + mod_path
             mod_args.append(mod_path)
     build_yindex.build_yindex(ytree_dir, mod_args, lock_file_cron, LOGGER, save_file_dir,
-                              es_host, es_port, es_protocol, threads, temp_dir)
+                              es_host, es_port, es_protocol, threads, temp_dir,
+                              log_directory + '/process-changed-mods.log')
     os.unlink(lock_file_cron)
 

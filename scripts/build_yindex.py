@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import traceback
 
 __author__ = "Miroslav Kovac and Joe Clarke"
 __copyright__ = "Copyright 2018 Cisco and its affiliates"
@@ -51,7 +52,7 @@ def __run_pyang_commands(commands, output_only=True, decode=True):
 
 
 def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
-                 es_host, es_port, es_protocol, threads, temp_dir):
+                 es_host, es_port, es_protocol, threads, temp_dir, log_file):
     es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
     initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
     initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
@@ -60,17 +61,16 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
     es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
 
     logging.getLogger('elasticsearch').setLevel(logging.ERROR)
-    try:
-        x = 0
-        for module in modules:
+    x = 0
+    modules_copy = modules.copy()
+    for module in modules:
+        try:
+            modules_copy.remove(module)
             x += 1
             LOGGER.info('yindex on module {}. module {} out of {}'.format(module.split('/')[-1], x, len(modules)))
             # split to module with path and organization
             m_parts = module.split(":")
-            if len(m_parts) > 1:
-                m = m_parts[0]
-            else:
-                m = m_parts[0]
+            m = m_parts[0]
 
             ctx = create_context('{}'.format(save_file_dir))
 
@@ -78,8 +78,7 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                 parsed_module = ctx.add_module(m, f.read())
 
             if parsed_module is None:
-                LOGGER.warning('Unable to pyang parse module {} skipping this module'.format(module))
-                continue
+                raise Exception('Unable to pyang parse module')
             with open('{}/emit_name_temp.txt'.format(temp_dir), 'w', encoding='utf-8') as f:
                 ctx.opts.print_revision = True
                 emit_name(ctx, [parsed_module], f)
@@ -90,15 +89,11 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
             mods = [parsed_module]
 
             find_submodules(ctx, mods, parsed_module)
-            try:
-                with open('{}/emit_index_temp.txt'.format(temp_dir), 'w', encoding='utf-8') as f:
-                    ctx.opts.yang_index_make_module_table = True
-                    ctx.opts.yang_index_no_schema = True
-                    plugin = IndexerPlugin()
-                    plugin.emit(ctx, [parsed_module], f)
-            except:
-                LOGGER.warning('Unable to pyang parse module {} skipping this module'.format(module))
-                continue
+            with open('{}/emit_index_temp.txt'.format(temp_dir), 'w', encoding='utf-8') as f:
+                ctx.opts.yang_index_make_module_table = True
+                ctx.opts.yang_index_no_schema = True
+                plugin = IndexerPlugin()
+                plugin.emit(ctx, [parsed_module], f)
 
             with open('{}/emit_index_temp.txt'.format(temp_dir), encoding='utf-8') as f:
                 yindexes = json.load(f)
@@ -112,11 +107,16 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                 revision = '1970-01-01'
             try:
                 dateutil.parser.parse(revision)
-            except ValueError as e:
+            except Exception as e:
                 if revision[-2:] == '29' and revision[-5:-3] == '02':
                     revision = revision.replace('02-29', '02-28')
+                else:
+                    revision = '1970-01-01'
             rev_parts = revision.split('-')
-            revision = datetime(int(rev_parts[0]), int(rev_parts[1]), int(rev_parts[2])).date().isoformat()
+            try:
+                revision = datetime(int(rev_parts[0]), int(rev_parts[1]), int(rev_parts[2])).date().isoformat()
+            except Exception:
+                revision = '1970-01-01'
 
             retry = 3
             while retry > 0:
@@ -131,9 +131,11 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
 
                         try:
                             dateutil.parser.parse(r)
-                        except ValueError as e:
+                        except Exception as e:
                             if r[-2:] == '29' and r[-5:-3] == '02':
                                 r = r.replace('02-29', '02-28')
+                            else:
+                                r = '1970-01-01'
                         rev_parts = r.split('-')
                         r = datetime(int(rev_parts[0]), int(rev_parts[1]), int(rev_parts[2])).date().isoformat()
                         try:
@@ -172,9 +174,11 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                         revision = rev
                     try:
                         dateutil.parser.parse(revision)
-                    except ValueError as e:
+                    except Exception as e:
                         if revision[-2:] == '29' and revision[-5:-3] == '02':
                             revision = revision.replace('02-29', '02-28')
+                        else:
+                            revision = '1970-01-01'
 
                     rev_parts = revision.split('-')
                     revision = datetime(int(rev_parts[0]), int(rev_parts[1]), int(rev_parts[2])).date().isoformat()
@@ -199,7 +203,7 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                             }
                         }
                     total = es.delete_by_query(index='modules', body=query, doc_type='modules', conflicts='proceed',
-                                       request_timeout=40)['deleted']
+                                               request_timeout=40)['deleted']
                     if total > 1:
                         LOGGER.info('{}@{}'.format(name, revision))
 
@@ -225,9 +229,38 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                     #create empty file so we still have access to that
                     f.write("")
 
-    except Exception as e:
-        os.unlink(lock_file_cron)
-        raise e
+        except Exception as e:
+            with open(log_file, 'a') as f:
+                traceback.print_exc(file=f)
+            m_parts = module.split(":")
+            with open('{}/emit_name_temp.txt'.format(temp_dir), 'w', encoding='utf-8') as f:
+                ctx.opts.print_revision = True
+                emit_name(ctx, [parsed_module], f)
+            with open('{}/emit_name_temp.txt'.format(temp_dir), 'r', encoding='utf-8') as f:
+                name_revision = f.read().strip()
+            os.unlink('{}/emit_name_temp.txt'.format(temp_dir))
+            name_revision = name_revision.split('@')
+            if len(name_revision) > 1:
+                name = name_revision[0]
+                revision = name_revision[1].split(' ')[0]
+            else:
+                name = name_revision[0]
+                revision = '1970-01-01'
+            try:
+                dateutil.parser.parse(revision)
+            except Exception as e:
+                if revision[-2:] == '29' and revision[-5:-3] == '02':
+                    revision = revision.replace('02-29', '02-28')
+                else:
+                    revision = '1970-01-01'
+            key = '{}@{}/{}'.format(name, revision, m_parts[1])
+            val = m_parts[0]
+            with open('/var/yang/yang2_repo_cache.dat.failed', 'r') as f:
+                failed_mods = json.load(f)
+            if key not in failed_mods:
+                failed_mods[key] = val
+            with open('/var/yang/yang2_repo_cache.dat.failed', 'w') as f:
+                json.dump(failed_mods, f)
 
 
 def find_submodules(ctx, mods, module):
