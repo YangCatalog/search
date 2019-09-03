@@ -251,7 +251,7 @@ def create_prev_next(module, rv):
                 {"revision": {"order": "desc"}}
             ]
         }
-    mods = es.search(index='modules', doc_type='modules', body=query)['hits']['hits']
+    mods = es.search(index='modules', doc_type='modules', body=query, size=100:)['hits']['hits']
     prev = None
     nxt = None
     i = 0
