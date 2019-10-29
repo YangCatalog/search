@@ -105,6 +105,8 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
             else:
                 name = name_revision[0]
                 revision = '1970-01-01'
+            if 'belongs-to' in name:
+                name = name.split(' ')[0]
             try:
                 dateutil.parser.parse(revision)
             except Exception as e:
