@@ -12,6 +12,7 @@
 # WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
 # See the License for the specific language governing permissions and
 # limitations under the License.
+import io
 import traceback
 
 __author__ = "Miroslav Kovac and Joe Clarke"
@@ -76,28 +77,26 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
 
             with open(m, 'r') as f:
                 parsed_module = ctx.add_module(m, f.read())
+            ctx.validate()
 
             if parsed_module is None:
                 raise Exception('Unable to pyang parse module')
-            with open('{}/emit_name_temp.txt'.format(temp_dir), 'w', encoding='utf-8') as f:
-                ctx.opts.print_revision = True
-                emit_name(ctx, [parsed_module], f)
-            with open('{}/emit_name_temp.txt'.format(temp_dir), 'r', encoding='utf-8') as f:
-                name_revision = f.read().strip()
-            os.unlink('{}/emit_name_temp.txt'.format(temp_dir))
+            f = io.StringIO()
+            ctx.opts.print_revision = True
+            emit_name(ctx, [parsed_module], f)
+            name_revision = f.getvalue().strip()
 
             mods = [parsed_module]
 
             find_submodules(ctx, mods, parsed_module)
-            with open('{}/emit_index_temp.txt'.format(temp_dir), 'w', encoding='utf-8') as f:
-                ctx.opts.yang_index_make_module_table = True
-                ctx.opts.yang_index_no_schema = True
-                plugin = IndexerPlugin()
-                plugin.emit(ctx, [parsed_module], f)
 
-            with open('{}/emit_index_temp.txt'.format(temp_dir), encoding='utf-8') as f:
-                yindexes = json.load(f)
-            os.unlink('{}/emit_index_temp.txt'.format(temp_dir))
+            f = io.StringIO()
+            ctx.opts.yang_index_make_module_table = True
+            ctx.opts.yang_index_no_schema = True
+            plugin = IndexerPlugin()
+            plugin.emit(ctx, [parsed_module], f)
+
+            yindexes = json.loads(f.getvalue())
             name_revision = name_revision.split('@')
             if len(name_revision) > 1:
                 name = name_revision[0]
@@ -235,12 +234,11 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
             with open(log_file, 'a') as f:
                 traceback.print_exc(file=f)
             m_parts = module.split(":")
-            with open('{}/emit_name_temp.txt'.format(temp_dir), 'w', encoding='utf-8') as f:
-                ctx.opts.print_revision = True
-                emit_name(ctx, [parsed_module], f)
-            with open('{}/emit_name_temp.txt'.format(temp_dir), 'r', encoding='utf-8') as f:
-                name_revision = f.read().strip()
-            os.unlink('{}/emit_name_temp.txt'.format(temp_dir))
+            f = io.StringIO()
+            ctx.opts.print_revision = True
+            emit_name(ctx, [parsed_module], f)
+            name_revision = f.getvalue().strip()
+
             name_revision = name_revision.split('@')
             if len(name_revision) > 1:
                 name = name_revision[0]
@@ -275,4 +273,5 @@ def find_submodules(ctx, mods, module):
         if subm is not None and subm not in mods:
             mods.append(subm)
             find_submodules(ctx, mods, subm)
+
 
