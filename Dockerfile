@@ -10,7 +10,7 @@ env VIRTUAL_ENV=/search
 
 #Install Cron
 RUN apt-get update
-RUN apt-get -y install cron \
+RUN apt-get -y install cron vim uwsgi uwsgi-plugin-python3\
   && apt-get autoremove -y
 
 RUN groupadd -g ${YANG_ID_GID} -r yang \
@@ -22,7 +22,6 @@ COPY . $VIRTUAL_ENV
 
 ENV PYTHONPATH=$VIRTUAL_ENV/bin/python
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
-ENV UWSGI_PROCS=2
 
 WORKDIR $VIRTUAL_ENV
 
@@ -32,20 +31,28 @@ RUN pip install -r requirements.txt \
 # Add crontab file in the cron directory
 COPY crontab /etc/cron.d/elastic-cron
 
-COPY scripts/pyang_plugin/json_tree.py search/lib/python3.7/site-packages/pyang/plugins/.
-COPY scripts/pyang_plugin/name-revision.py search/lib/python3.7/site-packages/pyang/plugins/.
-COPY scripts/pyang_plugin/yang_catalog_index_es.py search/lib/python3.7/site-packages/pyang/plugins/.
+COPY scripts/pyang_plugin/json_tree.py /search/lib/python3.8/site-packages/pyang/plugins/.
+COPY scripts/pyang_plugin/name-revision.py /search/lib/python3.8/site-packages/pyang/plugins/.
+COPY scripts/pyang_plugin/yang_catalog_index_es.py /search/lib/python3.8/site-packages/pyang/plugins/.
+COPY yang-search.ini-dist $VIRTUAL_ENV/yang-search.ini
 
+RUN mkdir /var/run/yang
+
+RUN chown -R yang:yang $VIRTUAL_ENV
 RUN chown yang:yang /etc/cron.d/elastic-cron
+RUN chown -R yang:yang /var/run/yang
 
 USER ${YANG_ID_GID}:${YANG_ID_GID}
 
 # Apply cron job
 RUN crontab /etc/cron.d/elastic-cron
 
+RUN chmod 0644 /etc/cron.d/elastic-cron
+
 ENV DJANGO_SETTINGS_MODULE=yang.settings
 
-CMD exec uwsgi -s :8005 --protocol uwsgi -p $UWSGI_PROCS \
-  -w yang.wsgi:application --need-app
+USER root:root
+
+CMD cron && uwsgi --ini $VIRTUAL_ENV/yang-search.ini
 
 EXPOSE 8005

@@ -16,12 +16,13 @@
 #limitations under the License.
 #
 [uwsgi]
-base = /home/yang/yang-search
+base = /search
 
 app = yang
 module = %(app).wsgi:application
 env = DJANGO_SETTINGS_MODULE=yang.settings
-plugin=python3
+plugins-dir = /usr/lib/uwsgi/plugins
+plugins = python3
 
 master = true
 processes = 2
@@ -29,8 +30,8 @@ processes = 2
 uid = yang
 gid = yang
 
-home = /home/yang/yang-search
-chdir = /home/yang/yang-search/search
+home = /search
+chdir = /search
 
 callable = app
 

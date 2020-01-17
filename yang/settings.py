@@ -178,7 +178,7 @@ logging.config.dictConfig({
         'file': {
             'level': 'DEBUG',
             'class': 'logging.FileHandler',
-            'filename': '/tmp/yang_search_debug.log',
+            'filename': '/var/yang/tmp/yang_search_debug.log',
         },
         'console': {
             'level': 'DEBUG',
