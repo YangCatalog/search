@@ -25,10 +25,6 @@ import io
 from pyang import Context, FileRepository
 from pyang.error import error_codes
 
-#logging.basicConfig(level=logging.INFO)
-#logging.captureWarnings(True)
-#LOGGER = logging.getLogger(__name__)
-
 DEFAULT_OPTIONS = {
     'path': [],
     'deviations': [],
@@ -139,7 +135,6 @@ def create_context(path='.', *options, **kwargs):
     Returns:
         pyang.Context: Context object for ``pyang`` usage
     """
-    # deviations (list): Deviation module (NOT CURRENTLY WORKING).
 
     opts = objectify(DEFAULT_OPTIONS, *options, **kwargs)
     repo = FileRepository(path, no_path_recurse=opts.no_path_recurse)

@@ -21,13 +21,13 @@ __license__ = "Apache License, Version 2.0"
 __email__ = "miroslav.kovac@pantheon.tech, jclarke@cisco.com"
 import json
 import logging
-import os
 import subprocess
 
 import dateutil.parser
 from datetime import datetime
 from elasticsearch import ConnectionError, ConnectionTimeout, Elasticsearch, NotFoundError
 from elasticsearch.helpers import parallel_bulk
+from pyang import plugin
 from pyang.plugins.json_tree import emit_tree
 from pyang.plugins.name import emit_name
 from pyang.plugins.yang_catalog_index_es import IndexerPlugin, resolve_organization
@@ -72,9 +72,12 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
             # split to module with path and organization
             m_parts = module.split(":")
             m = m_parts[0]
-
+            plugin.init([])
             ctx = create_context('{}'.format(save_file_dir))
-
+            ctx.opts.lint_namespace_prefixes = []
+            ctx.opts.lint_modulename_prefixes = []
+            for p in plugin.plugins:
+                p.setup_ctx(ctx)
             with open(m, 'r') as f:
                 parsed_module = ctx.add_module(m, f.read())
             ctx.validate()
@@ -93,8 +96,8 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
             f = io.StringIO()
             ctx.opts.yang_index_make_module_table = True
             ctx.opts.yang_index_no_schema = True
-            plugin = IndexerPlugin()
-            plugin.emit(ctx, [parsed_module], f)
+            indexerPlugin = IndexerPlugin()
+            indexerPlugin.emit(ctx, [parsed_module], f)
 
             yindexes = json.loads(f.getvalue())
             name_revision = name_revision.split('@')
