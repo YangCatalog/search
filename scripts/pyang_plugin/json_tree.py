@@ -19,10 +19,7 @@ hierarchy of the YANG module(s).  This is based on the
 jstree output plugin.
 """
 
-import optparse
-import sys
 import json
-import pprint
 
 from pyang import plugin
 from pyang import statements
@@ -76,10 +73,14 @@ def emit_tree(modules, fd, ctx):
         maugs = []
         for m in mods:
             for augment in m.search('augment'):
+                aug = {}
+                aug['augment_children'] = []
+                aug['augment_path'] = augment.arg
                 if (hasattr(augment.i_target_node, 'i_module') and
                         augment.i_target_node.i_module not in modules + mods):
-                    maugs.append(get_children(
-                        augment.i_children, module, ' ', ctx)[0])
+                    aug['augment_children'].extend(get_children(
+                        augment.i_children, module, ' ', ctx))
+                maugs.append(aug)
 
         if len(maugs) > 0:
             mod_out['augments'] = maugs

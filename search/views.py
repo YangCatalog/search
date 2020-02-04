@@ -594,7 +594,10 @@ def yang_tree(request, module=''):
                             augments['name'] = json_tree['prefix'] + ':augments'
                             augments['children'] = []
                             for aug in json_tree.get('augments'):
-                                augments['children'].append(aug)
+                                aug_info = dict()
+                                aug_info['name'] = aug['augment_path']
+                                aug_info['children'] = aug['augment_children']
+                                augments['children'].append(aug_info)
 
                             jstree_json['data'].append(build_tree(augments, modn, augments=True))
                 except Exception as e:
