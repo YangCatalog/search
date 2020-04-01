@@ -64,7 +64,8 @@ ALLOWED_HOSTS = [
     'yang.amsl.com',
     'cisco.yangcatalog.org',
     'yangcatalog.cisco.com',
-    '127.0.0.1'
+    '127.0.0.1',
+    '4.31.198.58'
 ]
 
 # Application definition
