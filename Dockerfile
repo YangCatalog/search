@@ -53,6 +53,6 @@ ENV DJANGO_SETTINGS_MODULE=yang.settings
 
 USER root:root
 
-CMD cron && uwsgi --ini $VIRTUAL_ENV/yang-search.ini
+CMD chown -R yang:yang /var/run/yang && cron && uwsgi --ini $VIRTUAL_ENV/yang-search.ini
 
 EXPOSE 8005
