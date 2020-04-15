@@ -8,10 +8,6 @@ or be referenced by the environment variable `$PYANG_PLUGINPATH`.
 
 Another PYANG plugin.
 
-## name-revision.py
-
-Another PYANG plugin.
-
 ## yang_catalog_index_es.py
 
 This is a PYANG plugin to generate the elasticsearch statements for Yang Search database. It must be installed in the PYANG plugin directory.

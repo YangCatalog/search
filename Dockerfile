@@ -34,7 +34,6 @@ RUN pip install -r requirements.txt \
 COPY crontab /etc/cron.d/elastic-cron
 
 COPY scripts/pyang_plugin/json_tree.py /search/lib/python3.8/site-packages/pyang/plugins/.
-COPY scripts/pyang_plugin/name-revision.py /search/lib/python3.8/site-packages/pyang/plugins/.
 COPY scripts/pyang_plugin/yang_catalog_index_es.py /search/lib/python3.8/site-packages/pyang/plugins/.
 COPY yang-search.ini-dist $VIRTUAL_ENV/yang-search.ini
 
