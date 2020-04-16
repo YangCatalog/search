@@ -12,8 +12,13 @@ env VIRTUAL_ENV=/search
 
 #Install Cron
 RUN apt-get update
-RUN apt-get -y install cron vim uwsgi uwsgi-plugin-python3\
-  && apt-get autoremove -y
+RUN apt-get -y install cron vim uwsgi uwsgi-plugin-python3
+RUN echo postfix postfix/mailname string yang2.amsl.com | debconf-set-selections; \
+    echo postfix postfix/main_mailer_type string 'Internet Site' | debconf-set-selections; \
+    apt-get -y install postfix
+RUN apt-get autoremove -y
+
+COPY main.cf /etc/postfix/main.cf
 
 RUN groupadd -g ${YANG_GID} -r yang \
   && useradd --no-log-init -r -g yang -u ${YANG_ID} -d $VIRTUAL_ENV yang \
@@ -54,6 +59,6 @@ ENV DJANGO_SETTINGS_MODULE=yang.settings
 
 USER root:root
 
-CMD chown -R yang:yang /var/run/yang && cron && uwsgi --ini $VIRTUAL_ENV/yang-search.ini
+CMD chown -R yang:yang /var/run/yang && cron && service postfix start && uwsgi --ini $VIRTUAL_ENV/yang-search.ini
 
 EXPOSE 8005
