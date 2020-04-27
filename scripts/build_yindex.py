@@ -221,7 +221,7 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                 except (ConnectionTimeout, ConnectionError) as e:
                     retry = retry - 1
                     if retry > 0:
-                        LOGGER.warn('module {}@{} timed out'.format(name, revision))
+                        LOGGER.warning('module {}@{} timed out'.format(name, revision))
                     else:
                         LOGGER.error('module {}@{} timed out too many times failing'.format(name, revision))
                         raise e
