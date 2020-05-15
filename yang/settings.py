@@ -27,10 +27,10 @@ For the full list of settings and their values, see
 https://docs.djangoproject.com/en/2.0/ref/settings/
 """
 
-import os
-import logging
-import logging.config
 import configparser
+import logging.config
+import os
+import socket
 
 # Build paths inside the project like this: os.path.join(BASE_DIR, ...)
 BASE_DIR = os.path.dirname(os.path.dirname(os.path.abspath(__file__)))
@@ -50,12 +50,12 @@ dbname = config.get('DB-Section', 'name-search')
 dbuser = config.get('DB-Section', 'user')
 dbpassword = config.get('DB-Section', 'password')
 django_secret_key = config.get('Yang-Search-Section', 'django_secret_key')
-
+api_ip = config.get('Receiver-Section', 'api-ip')
 SECRET_KEY = django_secret_key
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
-
+ip_addr = socket.gethostbyname(api_ip)
 ALLOWED_HOSTS = [
     'yangcatalog.org',
     'www.yangcatalog.org',
@@ -65,7 +65,8 @@ ALLOWED_HOSTS = [
     'cisco.yangcatalog.org',
     'yangcatalog.cisco.com',
     '127.0.0.1',
-    'yang2.amsl.com'
+    'yang2.amsl.com',
+    ip_addr
 ]
 
 # Application definition
