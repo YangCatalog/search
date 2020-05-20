@@ -345,11 +345,7 @@ def module_details(request, module=''):
         context['revision'] = rv
         context['organization'] = org
         context['mod_rev'] = '{}@{}'.format(module, rv)
-        #        context['prev'] = prev
-        #       context['next'] = nxt
-        #        context['prev_text'] = '{}@{}'.format(module, prev)
-        #       context['next_text'] = '{}@{}'.format(module, nxt)
-        context['title'] = 'Module Details for {}@{}/{}'.format(module, rv, org)
+        context['title'] = 'Module Details for {}@{}.yang'.format(module, rv)
     except Exception as e:
         context['title'] = title
         return render(request, 'search/module_details.html', context)
