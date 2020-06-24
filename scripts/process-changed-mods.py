@@ -114,6 +114,7 @@ if __name__ == '__main__':
     my_uri = config.get('General-Section', 'confd-ip')
     yang_models = config.get('Directory-Section', 'yang_models_dir')
     changes_cache_dir = config.get('Directory-Section', 'changes-cache')
+    failed_changes_cache_dir = config.get('Directory-Section', 'changes-cache-failed')
     delete_cache_dir = config.get('Directory-Section', 'delete-cache')
     temp_dir = config.get('Directory-Section', 'temp')
     lock_file = config.get('Directory-Section', 'lock')
@@ -253,8 +254,8 @@ if __name__ == '__main__':
             if not mod_path.startswith('/'):
                 mod_path = yang_models + '/' + mod_path
             mod_args.append(mod_path)
-    build_yindex.build_yindex(ytree_dir, mod_args, lock_file_cron, LOGGER, save_file_dir,
-                              es_host, es_port, es_protocol, threads, temp_dir,
-                              log_directory + '/process-changed-mods.log')
+    build_yindex.build_yindex(ytree_dir, mod_args, LOGGER, save_file_dir,
+                              es_host, es_port, es_protocol, threads,
+                              log_directory + '/process-changed-mods.log', failed_changes_cache_dir)
     os.unlink(lock_file_cron)
 

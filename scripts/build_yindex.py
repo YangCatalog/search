@@ -52,8 +52,8 @@ def __run_pyang_commands(commands, output_only=True, decode=True):
         return stdout, stderr
 
 
-def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
-                 es_host, es_port, es_protocol, threads, temp_dir, log_file):
+def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es_protocol,
+                 threads, log_file, failed_changes_dir):
     es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
     initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
     initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
@@ -258,11 +258,11 @@ def build_yindex(ytree_dir, modules, lock_file_cron, LOGGER, save_file_dir,
                     revision = '1970-01-01'
             key = '{}@{}/{}'.format(name, revision, m_parts[1])
             val = m_parts[0]
-            with open('/var/yang/yang2_repo_cache.dat.failed', 'r') as f:
+            with open(failed_changes_dir, 'r') as f:
                 failed_mods = json.load(f)
             if key not in failed_mods:
                 failed_mods[key] = val
-            with open('/var/yang/yang2_repo_cache.dat.failed', 'w') as f:
+            with open(failed_changes_dir, 'w') as f:
                 json.dump(failed_mods, f)
 
 
