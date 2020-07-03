@@ -49,7 +49,7 @@ dbhost = config.get('DB-Section', 'host')
 dbname = config.get('DB-Section', 'name-search')
 dbuser = config.get('DB-Section', 'user')
 dbpassword = config.get('DB-Section', 'password')
-django_secret_key = config.get('Yang-Search-Section', 'django_secret_key')
+django_secret_key = config.get('Yang-Search-Section', 'django_secret_key').strip('"')
 api_ip = config.get('Receiver-Section', 'api-ip')
 SECRET_KEY = django_secret_key
 
@@ -173,7 +173,8 @@ logging.config.dictConfig({
     'formatters': {
         'console': {
             # exact format is not important, this is the minimum information
-            'format': '%(asctime)s %(name)-12s:%(lineno)d %(levelname)-8s %(message)s'
+            'format': '%(asctime)-15s %(levelname)-8s %(name)5s => %(message)s - %(lineno)d',
+            'datefmt': '%Y-%m-%d %H:%M:%S'
         },
     },
     'handlers': {
