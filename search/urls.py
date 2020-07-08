@@ -25,6 +25,7 @@ urlpatterns = [
     path('', views.index, name='index'),
     path(r'show_node/<name><path:path>/<revision>', view= views.show_node, name='show_node'),
     path(r'show_node/', view= views.show_node, name='show_node'),
+    path(r'reload_config/', view= views.reload_config, name='reload_config'),
     path(r'yang_tree/show_node/<name><path:path>', view= views.show_node, name='show_node'),
     path(r'impact_analysis/completions/<type>/<pattern>', view= views.completions, name='completions'),
     path(r'module_details/completions/<type>/<pattern>', view= views.completions, name='completions'),

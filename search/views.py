@@ -92,6 +92,47 @@ logging.getLogger('elasticsearch').setLevel(logging.ERROR)
 api_prefix = config.get('Web-Section', 'my_uri')
 
 
+def reload_config(request):
+    config_path = '/etc/yangcatalog/yangcatalog.conf'
+    config = configparser.ConfigParser()
+    config._interpolation = configparser.ExtendedInterpolation()
+    config.read(config_path)
+    update_signature = config.get('Yang-Search-Section', 'update_signature')
+    body_unicode = request.body.decode('utf-8')
+    signature = create_signature(update_signature, body_unicode)
+
+    if request.META.get('REQUEST_METHOD') is None or request.META['REQUEST_METHOD'] != 'POST':
+        return HttpResponse(json.dumps({'error': 'Invalid request method'}, cls=DjangoJSONEncoder),
+                            content_type="application/json", status=404)
+    if request.META.get('HTTP_X_YC_SIGNATURE') is None or request.META[
+        'HTTP_X_YC_SIGNATURE'] != 'sha1=' + signature:
+        return HttpResponse(json.dumps({'error': 'Invalid message signature'}, cls=DjangoJSONEncoder),
+                            content_type="application/json", status=404)
+
+    config = configparser.ConfigParser()
+    config._interpolation = configparser.ExtendedInterpolation()
+    config.read(config_path)
+    global es_host
+    es_host = config.get('DB-Section', 'es-host')
+    global es_port
+    es_port = config.get('DB-Section', 'es-port')
+    global es_protocol
+    es_protocol = config.get('DB-Section', 'es-protocol')
+    global es
+    es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
+    global initialize_body_yindex
+    initialize_body_yindex = json.load(open('search/templates/json/initialize_yindex_elasticsearch.json', 'r'))
+    global initialize_body_modules
+    initialize_body_modules = json.load(open('search/templates/json/initialize_module_elasticsearch.json', 'r'))
+    es.indices.create(index='yindex', body=initialize_body_yindex, ignore=400)
+    es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
+    logging.getLogger('elasticsearch').setLevel(logging.ERROR)
+    global api_prefix
+    api_prefix = config.get('Web-Section', 'my_uri')
+    return HttpResponse(json.dumps({'info': 'Search updated succesfully'}, cls=DjangoJSONEncoder),
+                        content_type="application/json", status=201)
+
+
 def index(request):
     """ View for default search page. Takes arguments from search request,
     and send them to function search().
@@ -488,10 +529,12 @@ def metadata_update(request):
             raise Exception('Failed to obtain lock ' + lock_file)
 
         if request.META.get('REQUEST_METHOD') is None or request.META['REQUEST_METHOD'] != 'POST':
-            raise Exception('Invalid request method')
+            return HttpResponseles(json.dumps({'error': 'Invalid request method'}, cls=DjangoJSONEncoder),
+                                content_type="application/json", status=404)
         if request.META.get('HTTP_X_YC_SIGNATURE') is None or request.META[
             'HTTP_X_YC_SIGNATURE'] != 'sha1=' + signature:
-            raise Exception('Invalid message signature')
+            return HttpResponse(json.dumps({'error': 'Invalid message signature'}, cls=DjangoJSONEncoder),
+                                content_type="application/json", status=404)
 
         changes_cache = dict()
         delete_cache = []
