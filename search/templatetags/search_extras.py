@@ -135,7 +135,7 @@ def dissolve(properties, indent = '\t'):
     str = ''
     for property in properties:
         for key, val in property.items():
-            if val.get('value') is not None and val.get('value') is not '':
+            if val.get('value') is not None and val.get('value') != '':
                 str += '{}<b>{}</b> {}'.format(indent, key, unescape_str(val.get('value'), indent))
             else:
                 str += "{}<b>{}</b> ".format(indent, key)

@@ -20,10 +20,15 @@ __copyright__ = "Copyright 2018 Cisco and its affiliates, Copyright The IETF Tru
 __license__ = "Apache License, Version 2.0"
 __email__ = "miroslav.kovac@pantheon.tech"
 
+import codecs
 import io
+from os.path import isfile
 
-from pyang import Context, FileRepository
+from pyang.context import Context
 from pyang.error import error_codes
+from pyang.repository import FileRepository
+from pyang.yang_parser import YangParser
+
 
 DEFAULT_OPTIONS = {
     'path': [],
@@ -158,3 +163,41 @@ def create_context(path='.', *options, **kwargs):
                 ctx.deviation_modules.append(module)
 
     return ctx
+
+
+def parse(text, ctx=None):
+    """Parse a YANG statement into an Abstract Syntax subtree.
+
+    Arguments:
+        text (str): file name for a YANG module or text
+        ctx (optional pyang.Context): context used to validate text
+
+    Returns:
+        pyang.statements.Statement: Abstract syntax subtree
+
+    Note:
+        The ``parse`` function can be used to parse small amounts of text.
+        If yout plan to parse an entire YANG (sub)module, please use instead::
+
+            ast = ctx.add_module(module_name, text_contet)
+
+        It is also well known that ``parse`` function cannot solve
+        YANG deviations yet.
+    """
+    parser = YangParser() # Similar names, but, this one is from PYANG library
+
+    filename = 'parser-input'
+
+    ctx_ = ctx or create_context()
+
+    if isfile(text):
+        filename = text
+        text = codecs.open(filename, encoding="utf-8").read()
+
+    # ensure reported errors are just from parsing
+    # old_errors = ctx_.errors
+    ctx_.errors = []
+
+    ast = parser.parse(ctx_, filename, text)
+
+    return ast

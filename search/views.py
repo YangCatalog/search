@@ -93,6 +93,7 @@ api_prefix = config.get('Web-Section', 'my_uri')
 
 
 def reload_config(request):
+    logger.info('Reloading config')
     config_path = '/etc/yangcatalog/yangcatalog.conf'
     config = configparser.ConfigParser()
     config._interpolation = configparser.ExtendedInterpolation()
@@ -129,6 +130,7 @@ def reload_config(request):
     logging.getLogger('elasticsearch').setLevel(logging.ERROR)
     global api_prefix
     api_prefix = config.get('Web-Section', 'my_uri')
+    logger.info('Config reloaded')
     return HttpResponse(json.dumps({'info': 'Search updated succesfully'}, cls=DjangoJSONEncoder),
                         content_type="application/json", status=201)
 
@@ -509,6 +511,7 @@ def metadata_update(request):
     :param request: Array with arguments from rest request.
     :return: calls scripts for database update and file generation
     """
+    logger.info('Updating metadata')
     config_path = '/etc/yangcatalog/yangcatalog.conf'
     config = configparser.ConfigParser()
     config._interpolation = configparser.ExtendedInterpolation()
@@ -529,7 +532,7 @@ def metadata_update(request):
             raise Exception('Failed to obtain lock ' + lock_file)
 
         if request.META.get('REQUEST_METHOD') is None or request.META['REQUEST_METHOD'] != 'POST':
-            return HttpResponseles(json.dumps({'error': 'Invalid request method'}, cls=DjangoJSONEncoder),
+            return HttpResponse(json.dumps({'error': 'Invalid request method'}, cls=DjangoJSONEncoder),
                                 content_type="application/json", status=404)
         if request.META.get('HTTP_X_YC_SIGNATURE') is None or request.META[
             'HTTP_X_YC_SIGNATURE'] != 'sha1=' + signature:
