@@ -82,7 +82,7 @@ def emit_index(ctx, modules, fd):
 
     _ctx = ctx
     if not ctx.opts.yang_index_schema_only_es:
-        _yang_catalog_index_values = [] ;
+        _yang_catalog_index_values = []
         mods = []
         for module in modules:
             if module in mods:
@@ -202,6 +202,8 @@ def mk_path_str(s, with_prefixes=False):
         return mk_path_str(s.parent, with_prefixes)
     def name(s):
         if with_prefixes:
+            if len(s.keyword) == 2:
+                return s.keyword[0] + ":" + s.arg + "?" + s.keyword[1]
             return s.i_module.i_prefix + ":" + s.arg + "?" + s.keyword
         else:
             return s.arg

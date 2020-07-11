@@ -237,26 +237,7 @@ def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es
             with open(log_file, 'a') as f:
                 traceback.print_exc(file=f)
             m_parts = module.split(":")
-            f = io.StringIO()
-            ctx.opts.print_revision = True
-            emit_name(ctx, [parsed_module], f)
-            name_revision = f.getvalue().strip()
-
-            name_revision = name_revision.split('@')
-            if len(name_revision) > 1:
-                name = name_revision[0]
-                revision = name_revision[1].split(' ')[0]
-            else:
-                name = name_revision[0]
-                revision = '1970-01-01'
-            try:
-                dateutil.parser.parse(revision)
-            except Exception as e:
-                if revision[-2:] == '29' and revision[-5:-3] == '02':
-                    revision = revision.replace('02-29', '02-28')
-                else:
-                    revision = '1970-01-01'
-            key = '{}@{}/{}'.format(name, revision, m_parts[1])
+            key = '{}/{}'.format(m_parts[0].split('/')[-1][:-5], m_parts[1])
             val = m_parts[0]
             with open(failed_changes_dir, 'r') as f:
                 failed_mods = json.load(f)
