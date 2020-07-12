@@ -7,5 +7,5 @@ SHELL=/bin/bash
 #
 # Yang Search database maintenance
 #
-*/3 * * * * (cd ~ ; cd scripts ; export PYTHONPATH=${PYTHONPATH}:/search ; python process-changed-mods.py)
+*/3 * * * * (cd ~ ; cd scripts ; source bin/activate ; export PYTHONPATH=${PYTHONPATH}:/search ; python process-changed-mods.py)
 # Don't remove the empty line at the end of this file. It is required to run the cron job
