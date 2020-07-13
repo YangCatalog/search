@@ -53,7 +53,7 @@ def __run_pyang_commands(commands, output_only=True, decode=True):
 
 
 def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es_protocol,
-                 threads, log_file, failed_changes_dir):
+                 threads, log_file, failed_changes_dir, temp_dir):
     es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
     initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
     initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
@@ -163,11 +163,20 @@ def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es
                                         }
                                     }
                                 }
+                            LOGGER.debug('deleting data from yindex')
                             es.delete_by_query(index='yindex', body=query, doc_type='modules', conflicts='proceed', request_timeout=40)
                         except NotFoundError as e:
                             pass
                     for key in yindexes:
-                        for success, info in parallel_bulk(es, yindexes[key], thread_count=int(threads), index='yindex', doc_type='modules', request_timeout=40):
+                        LOGGER.debug('pushing new data to yindex')
+                        j = -1
+                        for j in range(0, int(len(yindexes[key]) / 30)):
+                            for success, info in parallel_bulk(es, yindexes[key][j * 30: (j * 30) + 30], thread_count=int(threads), index='yindex', doc_type='modules', request_timeout=40):
+                                if not success:
+                                    LOGGER.error('A elasticsearch document failed with info: {}'.format(info))
+                        for success, info in parallel_bulk(es, yindexes[key][(j * 30) + 30:],
+                                                           thread_count=int(threads), index='yindex',
+                                                           doc_type='modules', request_timeout=40):
                             if not success:
                                 LOGGER.error('A elasticsearch document failed with info: {}'.format(info))
 
@@ -206,6 +215,7 @@ def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es
                                 }
                             }
                         }
+                    LOGGER.debug('deleting data from modules index')
                     total = es.delete_by_query(index='modules', body=query, doc_type='modules', conflicts='proceed',
                                                request_timeout=40)['deleted']
                     if total > 1:
@@ -216,6 +226,7 @@ def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es
                     query['organization'] = resolve_organization(parsed_module)
                     query['revision'] = revision
                     query['dir'] = parsed_module.pos.ref
+                    LOGGER.debug('pushing data to modules index')
                     es.index(index='modules',  doc_type='modules', body=query, request_timeout=40)
                     break
                 except (ConnectionTimeout, ConnectionError) as e:
@@ -232,6 +243,8 @@ def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es
                 except:
                     #create empty file so we still have access to that
                     f.write("")
+            with open('{}/rest-of-elk-data.json'.format(temp_dir), 'w') as f:
+                json.dump(modules_copy, f)
 
         except Exception as e:
             with open(log_file, 'a') as f:

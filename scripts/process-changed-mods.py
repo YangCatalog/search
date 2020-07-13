@@ -256,6 +256,7 @@ if __name__ == '__main__':
             mod_args.append(mod_path)
     build_yindex.build_yindex(ytree_dir, mod_args, LOGGER, save_file_dir,
                               es_host, es_port, es_protocol, threads,
-                              log_directory + '/process-changed-mods.log', failed_changes_cache_dir)
+                              log_directory + '/process-changed-mods.log', failed_changes_cache_dir,
+                              temp_dir)
     os.unlink(lock_file_cron)
 
