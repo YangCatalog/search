@@ -48,14 +48,12 @@ config.read(config_path)
 dbhost = config.get('DB-Section', 'host')
 dbname = config.get('DB-Section', 'name-search')
 dbuser = config.get('DB-Section', 'user')
-dbpassword = config.get('DB-Section', 'password')
-django_secret_key = config.get('Yang-Search-Section', 'django_secret_key').strip('"')
-api_ip = config.get('Receiver-Section', 'api-ip')
+dbpassword = config.get('Secrets-Section', 'mysql-password')
+django_secret_key = config.get('Secrets-Section', 'django-secret-key').strip('"')
 SECRET_KEY = django_secret_key
 
 # SECURITY WARNING: don't run with debug turned on in production!
 DEBUG = False
-ip_addr = socket.gethostbyname(api_ip)
 ALLOWED_HOSTS = [
     'yangcatalog.org',
     'www.yangcatalog.org',
@@ -65,8 +63,7 @@ ALLOWED_HOSTS = [
     'cisco.yangcatalog.org',
     'yangcatalog.cisco.com',
     '127.0.0.1',
-    'yang2.amsl.com',
-    ip_addr
+    'yang2.amsl.com'
 ]
 
 # Application definition

@@ -65,7 +65,7 @@ def get_logger(name, file_name_path='yang.log'):
         exists = True
     FORMAT = '%(asctime)-15s %(levelname)-8s %(name)5s => %(message)s - %(lineno)d'
     DATEFMT = '%Y-%m-%d %H:%M:%S'
-    logging.basicConfig(datefmt=DATEFMT, format=FORMAT, filename=file_name_path, level=logging.INFO)
+    logging.basicConfig(datefmt=DATEFMT, format=FORMAT, filename=file_name_path, level=logging.DEBUG)
     logger = logging.getLogger(name)
     # if file didn t exist we create it and now we can set chmod
     if not exists:
@@ -106,13 +106,12 @@ if __name__ == '__main__':
     dbHost = config.get('DB-Section', 'host')
     dbName = config.get('DB-Section', 'name-search')
     dbUser = config.get('DB-Section', 'user')
-    dbPass = config.get('DB-Section', 'password')
+    dbPass = config.get('Secrets-Section', 'mysql-password')
     es_host = config.get('DB-Section', 'es-host')
     es_port = config.get('DB-Section', 'es-port')
     es_protocol = config.get('DB-Section', 'es-protocol')
-    private_secret = config.get('General-Section', 'private-secret')
-    my_uri = config.get('General-Section', 'confd-ip')
-    yang_models = config.get('Directory-Section', 'yang_models_dir')
+    my_uri = config.get('Web-Section', 'confd-ip')
+    yang_models = config.get('Directory-Section', 'yang-models-dir')
     changes_cache_dir = config.get('Directory-Section', 'changes-cache')
     failed_changes_cache_dir = config.get('Directory-Section', 'changes-cache-failed')
     delete_cache_dir = config.get('Directory-Section', 'delete-cache')
@@ -122,6 +121,8 @@ if __name__ == '__main__':
     ytree_dir = config.get('Directory-Section', 'json-ytree')
     save_file_dir = config.get('Directory-Section', 'save-file-dir')
     threads = config.get('General-Section', 'threads')
+    processes = int(config.get('General-Section', 'yProcesses'))
+
     if os.path.exists(lock_file) or os.path.exists(lock_file_cron):
         # we can exist since this is run by cronjob every minute of every day
         LOGGER.warning('Temporary lock file used by something else. Exiting script !!!')
@@ -257,6 +258,6 @@ if __name__ == '__main__':
     build_yindex.build_yindex(ytree_dir, mod_args, LOGGER, save_file_dir,
                               es_host, es_port, es_protocol, threads,
                               log_directory + '/process-changed-mods.log', failed_changes_cache_dir,
-                              temp_dir)
+                              temp_dir, processes)
     os.unlink(lock_file_cron)
-
+    LOGGER.info("Job finished successfully")

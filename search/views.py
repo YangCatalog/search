@@ -89,7 +89,7 @@ initialize_body_modules = json.load(open('search/templates/json/initialize_modul
 es.indices.create(index='yindex', body=initialize_body_yindex, ignore=400)
 es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
 logging.getLogger('elasticsearch').setLevel(logging.ERROR)
-api_prefix = config.get('Web-Section', 'my_uri')
+api_prefix = config.get('Web-Section', 'my-uri')
 
 
 def reload_config(request):
@@ -98,7 +98,7 @@ def reload_config(request):
     config = configparser.ConfigParser()
     config._interpolation = configparser.ExtendedInterpolation()
     config.read(config_path)
-    update_signature = config.get('Yang-Search-Section', 'update_signature')
+    update_signature = config.get('Secrets-Section', 'update-signature')
     body_unicode = request.body.decode('utf-8')
     signature = create_signature(update_signature, body_unicode)
 
@@ -129,7 +129,7 @@ def reload_config(request):
     es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
     logging.getLogger('elasticsearch').setLevel(logging.ERROR)
     global api_prefix
-    api_prefix = config.get('Web-Section', 'my_uri')
+    api_prefix = config.get('Web-Section', 'my-uri')
     logger.info('Config reloaded')
     return HttpResponse(json.dumps({'info': 'Search updated succesfully'}, cls=DjangoJSONEncoder),
                         content_type="application/json", status=201)
@@ -518,7 +518,7 @@ def metadata_update(request):
     config.read(config_path)
     changes_cache_dir = config.get('Directory-Section', 'changes-cache')
     delete_cache_dir = config.get('Directory-Section', 'delete-cache')
-    update_signature = config.get('Yang-Search-Section', 'update_signature')
+    update_signature = config.get('Secrets-Section', 'update-signature')
     lock_file = config.get('Directory-Section', 'lock')
 
     body_unicode = request.body.decode('utf-8')
