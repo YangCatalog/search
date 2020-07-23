@@ -23,6 +23,7 @@ import json
 
 from pyang import plugin
 from pyang import statements
+from pyang import util
 
 
 def pyang_plugin_init():
@@ -284,7 +285,7 @@ def typestring(node):
         else:
             # this is a prefixed name, check the imported modules
             err = []
-            pmodule = statements.prefix_to_module(
+            pmodule = util.prefix_to_module(
                 t.i_module, prefix, t.pos, err)
             if pmodule is None:
                 return
