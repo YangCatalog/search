@@ -388,6 +388,7 @@ def module_details(request, module=''):
         context['revision'] = rv
         context['organization'] = org
         context['mod_rev'] = '{}@{}'.format(module, rv)
+        context['alerts'] = alerts
         context['title'] = 'Module Details for {}@{}.yang'.format(module, rv)
     except Exception as e:
         context['title'] = title
@@ -646,8 +647,12 @@ def yang_tree(request, module=''):
                     alerts.append("Failed to read YANG tree data for {}, {}".format(module, e))
             else:
                 alerts.append("YANG Tree data does not exist for {}".format(module))
-    if jstree_json is not None:
+    if jstree_json is None:
+        context['jstree_json'] = dict()
+        alerts.append('Json three could not be generated')
+    else:
         context['jstree_json'] = json.dumps(jstree_json, cls=DjangoJSONEncoder)
+
     context['module'] = module
     if modn:
         context['modn'] = modn
