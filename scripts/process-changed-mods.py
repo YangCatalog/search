@@ -122,7 +122,7 @@ if __name__ == '__main__':
     save_file_dir = config.get('Directory-Section', 'save-file-dir')
     threads = config.get('General-Section', 'threads')
     processes = int(config.get('General-Section', 'yProcesses'))
-
+    recursion_limit = sys.getrecursionlimit()
     if os.path.exists(lock_file) or os.path.exists(lock_file_cron):
         # we can exist since this is run by cronjob every minute of every day
         LOGGER.warning('Temporary lock file used by something else. Exiting script !!!')
@@ -255,9 +255,11 @@ if __name__ == '__main__':
             if not mod_path.startswith('/'):
                 mod_path = yang_models + '/' + mod_path
             mod_args.append(mod_path)
+    sys.setrecursionlimit(50000)
     build_yindex.build_yindex(ytree_dir, mod_args, LOGGER, save_file_dir,
                               es_host, es_port, es_protocol, threads,
                               log_directory + '/process-changed-mods.log', failed_changes_cache_dir,
                               temp_dir, processes)
+    sys.setrecursionlimit(recursion_limit)
     os.unlink(lock_file_cron)
     LOGGER.info("Job finished successfully")

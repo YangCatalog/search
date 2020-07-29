@@ -74,6 +74,10 @@ def emit_tree(modules, fd, ctx):
         maugs = []
         for m in mods:
             for augment in m.search('augment'):
+                try:
+                    hasattr(augment.i_target_node, 'i_module')
+                except:
+                    continue
                 aug = {}
                 aug['augment_children'] = []
                 aug['augment_path'] = augment.arg
@@ -324,15 +328,17 @@ def action_params(action):
 
 def mk_path_str(s, with_prefixes=False):
     """Returns the XPath path of the node"""
-    if s.keyword in ['choice', 'case']:
-        return mk_path_str(s.parent, with_prefixes)
     def name(s):
         if with_prefixes:
+            if len(s.keyword) == 2:
+                return s.keyword[0] + ":" + s.arg + "?" + s.keyword[1]
             return s.i_module.i_prefix + ":" + s.arg + "?" + s.keyword
         else:
             return s.arg
     if s.parent.keyword in ['module', 'submodule']:
         return "/" + name(s)
+    elif s.keyword in ['choice', 'case']:
+        return mk_path_str(s.parent, with_prefixes)
     else:
         p = mk_path_str(s.parent, with_prefixes)
         return p + "/" + name(s)

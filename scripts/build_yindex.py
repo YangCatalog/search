@@ -240,8 +240,9 @@ def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es
             with open('{}/{}@{}.json'.format(ytree_dir, name, revision), 'w') as f:
                 try:
                     emit_tree([parsed_module], f, ctx)
-                except:
-                    #create empty file so we still have access to that
+                except Exception as e:
+                    # create empty file so we still have access to that
+                    LOGGER.warning('unable to create ytree for module {}@{} creating empty file')
                     f.write("")
             with open('{}/rest-of-elk-data.json'.format(temp_dir), 'w') as f:
                 json.dump(modules_copy, f)
