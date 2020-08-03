@@ -1,14 +1,14 @@
 # Copyright The IETF Trust 2019, All Rights Reserved
 # Copyright 2018 Cisco and its afficiliates
-# 
+#
 # Authors Joe Clarke jclarke@cisco.com and Tom�s Markovic <Tomas.Markovic@pantheon.tech> for the Python version
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,
 #     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -37,5 +37,6 @@ urlpatterns = [
     path(r'module_details/', views.module_details, name='module_details'),
     path(r'yang_tree/', views.yang_tree, name='yang_tree'),
     path(r'impact_analysis/', views.impact_analysis, name='impact_analysis'),
-    path(r'impact_analysis_php/', views.impact_analysis_php, name='impact_analysis_php') # This one is to maintain URL compatibility from previous links of IETF datatracker
+    path(r'impact_analysis_php/', views.impact_analysis_php, name='impact_analysis_php'), # This one is to maintain URL compatibility from previous links of IETF datatracker
+    path(r'ping', csrf_exempt(views.ping), name='ping')
 ]
