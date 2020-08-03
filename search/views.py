@@ -1638,3 +1638,29 @@ def impact_analysis_php(request):
     url = '{}?{}'.format(base_url, query_string)
     print('URL = ' + url)
     return redirect(url, permanent=False)
+
+
+def ping(request):
+    logger.info('Ping from healthcheck')
+    config_path = '/etc/yangcatalog/yangcatalog.conf'
+    config = configparser.ConfigParser()
+    config._interpolation = configparser.ExtendedInterpolation()
+    config.read(config_path)
+    update_signature = config.get('Secrets-Section', 'update-signature')
+
+    req_data = json.loads(request.body)
+    body_unicode = request.body.decode('utf-8')
+    signature = create_signature(update_signature, body_unicode)
+
+    if request.META.get('REQUEST_METHOD') is None or request.META['REQUEST_METHOD'] != 'POST':
+        return HttpResponse(json.dumps({'error': 'Invalid request method'}, cls=DjangoJSONEncoder),
+                            content_type='application/json', status=404)
+    if request.META.get('HTTP_X_YC_SIGNATURE') is None or request.META['HTTP_X_YC_SIGNATURE'] != 'sha1=' + signature:
+        return HttpResponse(json.dumps({'error': 'Invalid message signature'}, cls=DjangoJSONEncoder),
+                            content_type='application/json', status=404)
+    if req_data['input']['data'] == 'ping':
+        return HttpResponse(json.dumps({'info': 'Success'}, cls=DjangoJSONEncoder),
+                            content_type='application/json', status=200)
+    else:
+        return HttpResponse(json.dumps({'error': 'Bad request body'}, cls=DjangoJSONEncoder),
+                            content_type='application/json', status=400)
