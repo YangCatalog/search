@@ -328,12 +328,19 @@ def module_details(request, module=''):
     """
     alerts = []
     context = dict()
+    module = None
     if 'module' in request.GET:
         module = request.GET['module']
     title = 'Module Details'
     try:
         if 'module' in request.GET:
             module = request.GET['module']
+        if module is None or module == '':
+            context['title'] = title
+            context['module'] = ""
+            context['module_details'] = None
+            context['alerts'] = alerts
+            return render(request, 'search/module_details.html', context)
         module = module.replace('.yang', '')
         module = module.replace('.yin', '')
         rev_org = get_rev_org('yang-catalog', 1, alerts)
@@ -348,7 +355,7 @@ def module_details(request, module=''):
         revisions = create_prev_next(module, rv)
         url = api_prefix + '/api/search/modules/' + module + ',' + rv + ',' + org
         response = requests.get(url, headers={'Content-type': 'application/json', 'Accept': 'application/json'})
-        if response.text is not None:
+        if response.text is not None and json.loads(response.text).get('module') is not None:
             results = json.loads(response.text)['module']
         else:
             alerts.append('Module not Found.')
@@ -392,6 +399,9 @@ def module_details(request, module=''):
         context['title'] = 'Module Details for {}@{}.yang'.format(module, rv)
     except Exception as e:
         context['title'] = title
+        context['module'] = ""
+        context['module_details'] = None
+        context['alerts'] = alerts
         return render(request, 'search/module_details.html', context)
     return render(request, 'search/module_details.html', context)
 
