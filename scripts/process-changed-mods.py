@@ -103,7 +103,7 @@ if __name__ == '__main__':
     LOGGER.info('Initializing script loading config parameters')
     es_host = config.get('DB-Section', 'es-host')
     es_port = config.get('DB-Section', 'es-port')
-    es_aws = config.get('DB-Section', 'es-port')
+    es_aws = config.get('DB-Section', 'es-aws')
     if es_aws == 'True':
         es_aws = True
     else:
