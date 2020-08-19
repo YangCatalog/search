@@ -82,8 +82,12 @@ config._interpolation = configparser.ExtendedInterpolation()
 config.read(config_path)
 es_host = config.get('DB-Section', 'es-host')
 es_port = config.get('DB-Section', 'es-port')
-es_protocol = config.get('DB-Section', 'es-protocol')
-es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
+es_aws = config.get('DB-Section', 'es-aws')
+elk_credentials = config.get('Secrets-Section', 'elk-secret').strip('"').split(' ')
+if es_aws == 'True':
+    es = Elasticsearch(es_host, http_auth=(elk_credentials[0], elk_credentials[1]))
+else:
+    es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
 initialize_body_yindex = json.load(open('search/templates/json/initialize_yindex_elasticsearch.json', 'r'))
 initialize_body_modules = json.load(open('search/templates/json/initialize_module_elasticsearch.json', 'r'))
 es.indices.create(index='yindex', body=initialize_body_yindex, ignore=400)
@@ -117,10 +121,15 @@ def reload_config(request):
     es_host = config.get('DB-Section', 'es-host')
     global es_port
     es_port = config.get('DB-Section', 'es-port')
-    global es_protocol
-    es_protocol = config.get('DB-Section', 'es-protocol')
+    global es_aws
+    global elk_credentials
+    es_aws = config.get('DB-Section', 'es-aws')
+    elk_credentials = config.get('Secrets-Section', 'elk-secret').strip('"').split(' ')
     global es
-    es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
+    if es_aws == 'True':
+        es = Elasticsearch(es_host, http_auth=(elk_credentials[0], elk_credentials[1]))
+    else:
+        es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
     global initialize_body_yindex
     initialize_body_yindex = json.load(open('search/templates/json/initialize_yindex_elasticsearch.json', 'r'))
     global initialize_body_modules

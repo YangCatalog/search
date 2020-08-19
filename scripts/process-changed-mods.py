@@ -87,8 +87,6 @@ def pull(repo_dir):
 
 
 if __name__ == '__main__':
-    #find_args = []
-
     parser = argparse.ArgumentParser(
         description="Process changed modules in a git repo")
     parser.add_argument('--time', type=str,
@@ -103,14 +101,13 @@ if __name__ == '__main__':
     log_directory = config.get('Directory-Section', 'logs')
     LOGGER = get_logger('process_changed_mods', log_directory + '/process-changed-mods.log')
     LOGGER.info('Initializing script loading config parameters')
-    dbHost = config.get('DB-Section', 'host')
-    dbName = config.get('DB-Section', 'name-search')
-    dbUser = config.get('DB-Section', 'user')
-    dbPass = config.get('Secrets-Section', 'mysql-password')
     es_host = config.get('DB-Section', 'es-host')
     es_port = config.get('DB-Section', 'es-port')
-    es_protocol = config.get('DB-Section', 'es-protocol')
-    my_uri = config.get('Web-Section', 'confd-ip')
+    es_aws = config.get('DB-Section', 'es-port')
+    if es_aws == 'True':
+        es_aws = True
+    else:
+        es_aws = False
     yang_models = config.get('Directory-Section', 'yang-models-dir')
     changes_cache_dir = config.get('Directory-Section', 'changes-cache')
     failed_changes_cache_dir = config.get('Directory-Section', 'changes-cache-failed')
@@ -122,6 +119,7 @@ if __name__ == '__main__':
     save_file_dir = config.get('Directory-Section', 'save-file-dir')
     threads = config.get('General-Section', 'threads')
     processes = int(config.get('General-Section', 'yProcesses'))
+    elk_credentials = config.get('Secrets-Section', 'elk-secret').strip('"').split(' ')
     recursion_limit = sys.getrecursionlimit()
     if os.path.exists(lock_file) or os.path.exists(lock_file_cron):
         # we can exist since this is run by cronjob every minute of every day
@@ -173,7 +171,10 @@ if __name__ == '__main__':
         os.unlink(lock_file)
 
     if len(delete_cache) > 0:
-        es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
+        if es_aws:
+            es = Elasticsearch(es_host, http_auth=(elk_credentials[0], elk_credentials[1]))
+        else:
+            es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
         initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
         initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
 
@@ -257,7 +258,7 @@ if __name__ == '__main__':
             mod_args.append(mod_path)
     sys.setrecursionlimit(50000)
     build_yindex.build_yindex(ytree_dir, mod_args, LOGGER, save_file_dir,
-                              es_host, es_port, es_protocol, threads,
+                              es_host, es_port, es_aws, elk_credentials, threads,
                               log_directory + '/process-changed-mods.log', failed_changes_cache_dir,
                               temp_dir, processes)
     sys.setrecursionlimit(recursion_limit)

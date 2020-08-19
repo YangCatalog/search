@@ -9,7 +9,7 @@
       "filter":{
         "synonym":{
           "type":"synonym",
-          "synonyms_path":"thesaurus.conf"
+          "synonyms_path":"analyzers/F124173889"
         }
       },
       "tokenizer": {

@@ -51,9 +51,12 @@ def __run_pyang_commands(commands, output_only=True, decode=True):
         return stdout, stderr
 
 
-def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es_protocol,
+def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es_aws, elk_credentials,
                  threads, log_file, failed_changes_dir, temp_dir, processes):
-    es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
+    if es_aws:
+        es = Elasticsearch(es_host, http_auth=(elk_credentials[0], elk_credentials[1]))
+    else:
+        es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
     initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
     initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
 
