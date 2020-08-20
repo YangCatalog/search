@@ -85,7 +85,7 @@ es_port = config.get('DB-Section', 'es-port')
 es_aws = config.get('DB-Section', 'es-aws')
 elk_credentials = config.get('Secrets-Section', 'elk-secret').strip('"').split(' ')
 if es_aws == 'True':
-    es = Elasticsearch(es_host, http_auth=(elk_credentials[0], elk_credentials[1]))
+    es = Elasticsearch([es_host], http_auth=(elk_credentials[0], elk_credentials[1]), scheme="https", port=443)
 else:
     es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
 initialize_body_yindex = json.load(open('search/templates/json/initialize_yindex_elasticsearch.json', 'r'))
@@ -127,7 +127,7 @@ def reload_config(request):
     elk_credentials = config.get('Secrets-Section', 'elk-secret').strip('"').split(' ')
     global es
     if es_aws == 'True':
-        es = Elasticsearch(es_host, http_auth=(elk_credentials[0], elk_credentials[1]))
+        es = Elasticsearch([es_host], http_auth=(elk_credentials[0], elk_credentials[1]), scheme="https", port=443)
     else:
         es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
     global initialize_body_yindex

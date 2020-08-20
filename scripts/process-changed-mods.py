@@ -172,7 +172,7 @@ if __name__ == '__main__':
 
     if len(delete_cache) > 0:
         if es_aws:
-            es = Elasticsearch(es_host, http_auth=(elk_credentials[0], elk_credentials[1]))
+            es = Elasticsearch([es_host], http_auth=(elk_credentials[0], elk_credentials[1]), scheme="https", port=443)
         else:
             es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
         initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
