@@ -850,6 +850,9 @@ def search(post_json, search_term, alerts):
 
         response = requests.post('{}/api/fast'.format(api_prefix), json=post_json,
                                  headers={'Content-type': 'application/json', 'Accept': 'application/json'})
+        if response.status_code == 400:
+            alerts.append(response.json().get('error'))
+            return ''
         results = response.json().get('results')
 
         all_results = set()
