@@ -1,14 +1,14 @@
 # Copyright The IETF Trust 2019, All Rights Reserved
 # Copyright 2018 Cisco and its afficiliates
-# 
+#
 # Authors Joe Clarke jclarke@cisco.com and Tomas Markovic <Tomas.Markovic@pantheon.tech> for the Python version
-# 
+#
 # Licensed under the Apache License, Version 2.0 (the "License");
 # you may not use this file except in compliance with the License.
 # You may obtain a copy of the License at
-# 
+#
 #     http://www.apache.org/licenses/LICENSE-2.0
-# 
+#
 #     Unless required by applicable law or agreed to in writing, software
 #     distributed under the License is distributed on an "AS IS" BASIS,
 #     WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
@@ -59,11 +59,12 @@ ALLOWED_HOSTS = [
     'www.yangcatalog.org',
     'new.yangcatalog.org',
     'localhost',
-    'yang.amsl.com',
-    'cisco.yangcatalog.org',
-    'yangcatalog.cisco.com',
     '127.0.0.1',
     'yang2.amsl.com',
+    'www.yangvalidator.com',
+    'www.yangvalidator.org',
+    'yangvalidator.com',
+    'yangvalidator.org',
     '18.224.127.129'
 ]
 
