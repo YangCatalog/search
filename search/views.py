@@ -364,6 +364,7 @@ def module_details(request, module=''):
         revisions = create_prev_next(module, rv)
         url = api_prefix + '/api/search/modules/' + module + ',' + rv + ',' + org
         response = requests.get(url, headers={'Content-type': 'application/json', 'Accept': 'application/json'})
+        logger.error('Module details request created to backend {} with response \n{}'.format(url, response.text))
         if response.text is not None and json.loads(response.text).get('module') is not None:
             results = json.loads(response.text)['module']
         else:
@@ -406,7 +407,8 @@ def module_details(request, module=''):
         context['mod_rev'] = '{}@{}'.format(module, rv)
         context['alerts'] = alerts
         context['title'] = 'Module Details for {}@{}.yang'.format(module, rv)
-    except Exception as e:
+    except Exception:
+        logger.exception("Failed to get module")
         context['title'] = title
         context['module'] = ""
         context['module_details'] = None
