@@ -11,12 +11,12 @@ EXPOSE 8005
 ENV VIRTUAL_ENV=/search
 
 #Install Cron
-RUN apt-get update
+RUN apt-get -y update
 RUN apt-get -y install cron gunicorn
 RUN echo postfix postfix/mailname string yang2.amsl.com | debconf-set-selections; \
     echo postfix postfix/main_mailer_type string 'Internet Site' | debconf-set-selections; \
     apt-get -y install postfix
-RUN apt-get autoremove -y
+RUN apt-get -y autoremove
 
 COPY main.cf /etc/postfix/main.cf
 
