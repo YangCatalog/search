@@ -1,5 +1,8 @@
 ## Backend Release Notes
-* ##### v3.0.0 - 2021-02-DD
+
+* ##### vm.m.p - 2021-MM-DD
+
+* ##### v3.0.0 - 2021-02-10
 
   * Explicitly set version of Python base image to 3.8
   * Update Dockerfile
