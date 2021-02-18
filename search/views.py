@@ -670,7 +670,7 @@ def yang_tree(request, module=''):
                 alerts.append("YANG Tree data does not exist for {}".format(module))
     if jstree_json is None:
         context['jstree_json'] = dict()
-        alerts.append('Json three could not be generated')
+        alerts.append('Json tree could not be generated')
     else:
         context['jstree_json'] = json.dumps(jstree_json, cls=DjangoJSONEncoder)
 
