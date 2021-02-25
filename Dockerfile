@@ -15,7 +15,7 @@ RUN apt-get -y update
 RUN apt-get -y install cron gunicorn
 RUN echo postfix postfix/mailname string yang2.amsl.com | debconf-set-selections; \
     echo postfix postfix/main_mailer_type string 'Internet Site' | debconf-set-selections; \
-    apt-get -y install postfix
+    apt-get -y install postfix rsyslog systemd
 RUN apt-get -y autoremove
 
 COPY main.cf /etc/postfix/main.cf
@@ -57,6 +57,6 @@ ENV DJANGO_SETTINGS_MODULE=yang.settings
 
 USER root:root
 
-CMD chown -R yang:yang /var/run/yang && cron && service postfix start && /search/bin/gunicorn yang.wsgi:application -c gunicorn.conf.py
+CMD chown -R yang:yang /var/run/yang && cron && service postfix start && service rsyslog start && /search/bin/gunicorn yang.wsgi:application -c gunicorn.conf.py
 
 EXPOSE 8005
