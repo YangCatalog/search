@@ -2,6 +2,10 @@
 
 * ##### vm.m.p - 2021-MM-DD
 
+* ##### v3.0.1 - 2021-02-26
+
+ * rsyslog and systemd added to Docker image build [deployment #48](https://github.com/YangCatalog/deployment/issues/48)
+
 * ##### v3.0.0 - 2021-02-10
 
   * Explicitly set version of Python base image to 3.8
