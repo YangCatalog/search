@@ -212,6 +212,8 @@ def index(request):
         fields = request.GET.getlist('searchFields[]')
         for field in fields:
             post_json['search-fields'].append(field)
+    else:
+        post_json['search-fields'] = ['module', 'argument', 'description']
 
     if 'yangVersions[]' in request.GET:
         versions = request.GET.getlist('yangVersions[]')
@@ -239,6 +241,8 @@ def index(request):
             for one_header in headers:
                 post_json['headers'].append(one_header)
             search_columns = post_json['headers']
+        else:
+            post_json['headers'] = search_columns
 
     alerts = []
     logger.debug(post_json)
