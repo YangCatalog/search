@@ -341,9 +341,6 @@ def module_details(request, module=''):
     """
     alerts = []
     context = dict()
-    module = None
-    if 'module' in request.GET:
-        module = request.GET['module']
     title = 'Module Details'
     try:
         if 'module' in request.GET:
