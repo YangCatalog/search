@@ -1,6 +1,10 @@
-## Backend Release Notes
+## Yang Search Release Notes
 
 * ##### vm.m.p - 2021-MM-DD
+
+* ##### v3.1.0 - 2021-18-03
+
+ * No changes - released with other [deployment submodules](https://github.com/YangCatalog/deployment)
 
 * ##### v3.0.1 - 2021-02-26
 
