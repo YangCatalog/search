@@ -59,11 +59,17 @@ def build_yindex(ytree_dir, modules, LOGGER, save_file_dir, es_host, es_port, es
         es = Elasticsearch([{'host': '{}'.format(es_host), 'port': es_port}])
     initialize_body_yindex = json.load(open('json/initialize_yindex_elasticsearch.json', 'r'))
     initialize_body_modules = json.load(open('json/initialize_module_elasticsearch.json', 'r'))
-
-    es.indices.create(index='yindex', body=initialize_body_yindex, ignore=400)
-    es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
-
     logging.getLogger('elasticsearch').setLevel(logging.ERROR)
+    for i in range(0, 5, 1):
+        try:
+            es.indices.create(index='yindex', body=initialize_body_yindex, ignore=400)
+            es.indices.create(index='modules', body=initialize_body_modules, ignore=400)
+        except ConnectionError:
+            import time
+            LOGGER.warning("Could not connect to elasticsearch waiting 30 seconds")
+            time.sleep(30)
+    # it must be able to connect in here
+    es.ping()
     x = 0
     modules_copy = modules.copy()
     for module in modules:
