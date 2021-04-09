@@ -37,8 +37,8 @@ RUN pip install -r requirements.txt
 # Add crontab file in the cron directory
 COPY crontab /etc/cron.d/elastic-cron
 
-COPY scripts/pyang_plugin/json_tree.py /search/lib/python3.8/site-packages/pyang/plugins/.
-COPY scripts/pyang_plugin/yang_catalog_index_es.py /search/lib/python3.8/site-packages/pyang/plugins/.
+COPY scripts/pyang_plugin/json_tree.py /search/lib/python3.9/site-packages/pyang/plugins/.
+COPY scripts/pyang_plugin/yang_catalog_index_es.py /search/lib/python3.9/site-packages/pyang/plugins/.
 
 RUN mkdir /var/run/yang
 
