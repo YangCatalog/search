@@ -38,8 +38,8 @@ import logging
 import os
 import stat
 import sys
-import dateutil.parser
 
+import dateutil.parser
 from elasticsearch import Elasticsearch, NotFoundError
 from git import Repo
 from git.cmd import Git
@@ -52,18 +52,20 @@ __license__ = "Apache License, Version 2.0"
 __email__ = "miroslav.kovac@pantheon.tech, jclarke@cisco.com"
 
 
-def get_logger(name, file_name_path='yang.log'):
-    """Create formated logger with name of file yang.log
-        Arguments:
-            :param file_name_path: filename and path where to save logs.
-            :param name :  (str) Set name of the logger.
-            :return a logger with the specified name.
+def get_logger(name: str, file_name_path: str = 'yang.log'):
+    """Create formated logger with the specified name and store at path defined by
+        'file_name_path' argument.
+
+    Arguments:
+        :param file_name_path   (str) filename and path where to save logs.
+        :param name             (str) Set name of the logger.
+        :return a logger with the specified name.
     """
     # check if file exists
     exists = False
     if os.path.isfile(file_name_path):
         exists = True
-    FORMAT = '%(asctime)-15s %(levelname)-8s %(name)5s => %(message)s - %(lineno)d'
+    FORMAT = '%(asctime)-15s %(levelname)-8s %(filename)s %(name)5s => %(message)s - %(lineno)d'
     DATEFMT = '%Y-%m-%d %H:%M:%S'
     logging.basicConfig(datefmt=DATEFMT, format=FORMAT, filename=file_name_path, level=logging.DEBUG)
     logger = logging.getLogger(name)
@@ -221,12 +223,12 @@ if __name__ == '__main__':
                 es.delete_by_query(index='yindex', body=query, doc_type='modules', conflicts='proceed',
                                    request_timeout=40)
                 query['query']['bool']['must'].append({
-                                    "match_phrase": {
-                                        "organization": {
-                                            "query": morg
-                                        }
-                                    }
-                                })
+                    "match_phrase": {
+                        "organization": {
+                            "query": morg
+                        }
+                    }
+                })
                 LOGGER.info('deleting {}'.format(query))
                 es.delete_by_query(index='modules', body=query, doc_type='modules', conflicts='proceed',
                                    request_timeout=40)

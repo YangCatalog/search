@@ -60,6 +60,7 @@ ALLOWED_HOSTS = [
     'new.yangcatalog.org',
     'localhost',
     '127.0.0.1',
+    'yc-frontend',
     'yang2.amsl.com',
     'www.yangvalidator.com',
     'www.yangvalidator.org',
