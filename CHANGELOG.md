@@ -2,16 +2,19 @@
 
 * ##### vm.m.p - 2021-MM-DD
 
+* ##### v3.2.0 - 2021-04-15
+
+  * Logs format modified - added filename information [#89](https://github.com/YangCatalog/search/issues/89)
   * Python base image bumped to version 3.9 [deployment #66](https://github.com/YangCatalog/deployment/issues/66)
   * Elasticsearch start control
 
 * ##### v3.1.0 - 2021-18-03
 
- * No changes - released with other [deployment submodules](https://github.com/YangCatalog/deployment)
+  * No changes - released with other [deployment submodules](https://github.com/YangCatalog/deployment)
 
 * ##### v3.0.1 - 2021-02-26
 
- * rsyslog and systemd added to Docker image build [deployment #48](https://github.com/YangCatalog/deployment/issues/48)
+  * rsyslog and systemd added to Docker image build [deployment #48](https://github.com/YangCatalog/deployment/issues/48)
 
 * ##### v3.0.0 - 2021-02-10
 
