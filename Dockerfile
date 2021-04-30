@@ -1,9 +1,11 @@
 FROM python:3.9
 ARG YANG_ID
 ARG YANG_GID
+ARG CRON_MAIL_TO
 
 ENV YANG_ID "$YANG_ID"
 ENV YANG_GID "$YANG_GID"
+ENV CRON_MAIL_TO "$CRON_MAIL_TO"
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONUNBUFFERED=1
 
 EXPOSE 8005
@@ -42,6 +44,7 @@ COPY scripts/pyang_plugin/yang_catalog_index_es.py /search/lib/python3.9/site-pa
 
 RUN mkdir /var/run/yang
 
+RUN sed -i "s|<MAIL_TO>|${CRON_MAIL_TO} |g" /etc/cron.d/elastic-cron
 RUN chown -R yang:yang $VIRTUAL_ENV
 RUN chown yang:yang /etc/cron.d/elastic-cron
 RUN chown -R yang:yang /var/run/yang
