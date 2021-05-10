@@ -15,19 +15,20 @@ ENV VIRTUAL_ENV=/search
 #Install Cron
 RUN apt-get -y update
 RUN apt-get -y install cron gunicorn
-RUN echo postfix postfix/mailname string yang2.amsl.com | debconf-set-selections; \
+RUN echo postfix postfix/mailname string yangcatalog.org | debconf-set-selections; \
     echo postfix postfix/main_mailer_type string 'Internet Site' | debconf-set-selections; \
     apt-get -y install postfix rsyslog systemd
 RUN apt-get -y autoremove
 
-COPY main.cf /etc/postfix/main.cf
+COPY ./resources/main.cf /etc/postfix/main.cf
 
 RUN groupadd -g ${YANG_GID} -r yang \
   && useradd --no-log-init -r -g yang -u ${YANG_ID} -d $VIRTUAL_ENV yang \
   && pip install virtualenv \
   && virtualenv --system-site-packages $VIRTUAL_ENV \
   && mkdir /etc/yangcatalog
-COPY . $VIRTUAL_ENV
+
+COPY ./search $VIRTUAL_ENV
 
 ENV PYTHONPATH=$VIRTUAL_ENV/bin/python
 ENV PATH="$VIRTUAL_ENV/bin:$PATH"
@@ -37,10 +38,10 @@ WORKDIR $VIRTUAL_ENV
 RUN pip install -r requirements.txt
 
 # Add crontab file in the cron directory
-COPY crontab /etc/cron.d/elastic-cron
+COPY ./search/crontab /etc/cron.d/elastic-cron
 
-COPY scripts/pyang_plugin/json_tree.py /search/lib/python3.9/site-packages/pyang/plugins/.
-COPY scripts/pyang_plugin/yang_catalog_index_es.py /search/lib/python3.9/site-packages/pyang/plugins/.
+COPY ./search/scripts/pyang_plugin/json_tree.py /search/lib/python3.9/site-packages/pyang/plugins/.
+COPY ./search/scripts/pyang_plugin/yang_catalog_index_es.py /search/lib/python3.9/site-packages/pyang/plugins/.
 
 RUN mkdir /var/run/yang
 
