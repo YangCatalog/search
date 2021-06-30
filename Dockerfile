@@ -8,8 +8,6 @@ ENV YANG_GID "$YANG_GID"
 ENV CRON_MAIL_TO "$CRON_MAIL_TO"
 ENV LANG=C.UTF-8 LC_ALL=C.UTF-8 PYTHONUNBUFFERED=1
 
-EXPOSE 8005
-
 ENV VIRTUAL_ENV=/search
 
 #Install Cron
@@ -26,7 +24,7 @@ RUN groupadd -g ${YANG_GID} -r yang \
   && useradd --no-log-init -r -g yang -u ${YANG_ID} -d $VIRTUAL_ENV yang \
   && pip install virtualenv \
   && virtualenv --system-site-packages $VIRTUAL_ENV \
-  && mkdir /etc/yangcatalog
+  && mkdir -p /etc/yangcatalog
 
 COPY ./search $VIRTUAL_ENV
 
@@ -45,9 +43,9 @@ COPY ./search/scripts/pyang_plugin/yang_catalog_index_es.py /search/lib/python3.
 
 RUN mkdir /var/run/yang
 
+RUN chown yang:yang /etc/cron.d/elastic-cron
 RUN sed -i "s|<MAIL_TO>|${CRON_MAIL_TO} |g" /etc/cron.d/elastic-cron
 RUN chown -R yang:yang $VIRTUAL_ENV
-RUN chown yang:yang /etc/cron.d/elastic-cron
 RUN chown -R yang:yang /var/run/yang
 
 USER ${YANG_ID}:${YANG_GID}
