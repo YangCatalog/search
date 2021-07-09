@@ -1,6 +1,9 @@
-## Yang Search Release Notes
+## Yang Search Release Notes - !!!DISCONTINUED!!!
 
-* ##### vm.m.p - 2021-MM-DD
+* ##### v4.0.0 - 2021-07-09
+
+  * Pyang update to version 2.5.0 [deployment #85](https://github.com/YangCatalog/deployment/issues/85)
+  * yang2.amsl.com mailname replaced by yangcatalog.org [deployment #73](https://github.com/YangCatalog/deployment/issues/73)
 
 * ##### v3.2.1 - 2021-05-04
 
